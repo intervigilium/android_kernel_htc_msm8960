@@ -206,5 +206,11 @@ extern int msmfb_get_var(struct msm_fb_info *tmp);
 extern int msmfb_get_fb_area(void);
 #endif
 
+struct mdp_v4l2_req;
+int msm_fb_v4l2_enable(struct mdp_overlay *req, bool enable, void **par);
+int msm_fb_v4l2_update(void *par,
+	unsigned long srcp0_addr, unsigned long srcp0_size,
+	unsigned long srcp1_addr, unsigned long srcp1_size,
+	unsigned long srcp2_addr, unsigned long srcp2_size);
 
 #endif
