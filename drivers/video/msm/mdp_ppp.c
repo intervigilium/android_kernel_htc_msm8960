@@ -643,11 +643,72 @@ static int send_blit(const struct mdp_info *mdp, struct mdp_blit_req *req,
 	return 0;
 }
 
-int mdp_ppp_blit(const struct mdp_info *mdp, struct mdp_blit_req *req,
-		 struct file *src_file, unsigned long src_start, unsigned long src_len,
-		 struct file *dst_file, unsigned long dst_start, unsigned long dst_len)
+
+static int mdp_ppp_blit_addr(struct fb_info *info, struct mdp_blit_req *req,
+	unsigned long srcp0_start, unsigned long srcp0_len,
+	unsigned long srcp1_start, unsigned long srcp1_len,
+	unsigned long dst_start, unsigned long dst_len,
+	struct file *p_src_file, struct file *p_dst_file)
 {
-	struct mdp_regs regs = {0};
+	MDPIBUF iBuf;
+	u32 dst_width, dst_height;
+	struct msm_fb_data_type *mfd = info->par;
+
+	if (req->dst.format == MDP_FB_FORMAT)
+		req->dst.format =  mfd->fb_imgType;
+	if (req->src.format == MDP_FB_FORMAT)
+		req->src.format = mfd->fb_imgType;
+
+	if (mdp_ppp_verify_req(req)) {
+		printk(KERN_ERR "mdp_ppp: invalid image!\n");
+		put_img(p_src_file);
+		put_img(p_dst_file);
+		return -1;
+	}
+
+	iBuf.ibuf_width = req->dst.width;
+	iBuf.ibuf_height = req->dst.height;
+	iBuf.bpp = bytes_per_pixel[req->dst.format];
+
+	iBuf.ibuf_type = req->dst.format;
+	iBuf.buf = (uint8 *) dst_start;
+	iBuf.buf += req->dst.offset;
+
+	iBuf.roi.lcd_x = req->dst_rect.x;
+	iBuf.roi.lcd_y = req->dst_rect.y;
+	iBuf.roi.dst_width = req->dst_rect.w;
+	iBuf.roi.dst_height = req->dst_rect.h;
+
+	iBuf.roi.x = req->src_rect.x;
+	iBuf.roi.width = req->src_rect.w;
+	iBuf.roi.y = req->src_rect.y;
+	iBuf.roi.height = req->src_rect.h;
+
+	iBuf.mdpImg.width = req->src.width;
+	iBuf.mdpImg.imgType = req->src.format;
+
+
+	iBuf.mdpImg.bmy_addr = (uint32 *) (srcp0_start + req->src.offset);
+	if (iBuf.mdpImg.imgType == MDP_Y_CBCR_H2V2_ADRENO)
+		iBuf.mdpImg.cbcr_addr =
+			(uint32 *) ((uint32) iBuf.mdpImg.bmy_addr +
+				ALIGN((ALIGN(req->src.width, 32) *
+				ALIGN(req->src.height, 32)), 4096));
+	else
+		iBuf.mdpImg.cbcr_addr = srcp1_start ? (uint32 *)srcp1_start :
+			(uint32 *) ((uint32) iBuf.mdpImg.bmy_addr +
+			req->src.width * req->src.height);
+
+	iBuf.mdpImg.mdpOp = MDPOP_NOP;
+
+	/* blending check */
+	if (req->transp_mask != MDP_TRANSP_NOP) {
+		iBuf.mdpImg.mdpOp |= MDPOP_TRANSP;
+		iBuf.mdpImg.tpVal = req->transp_mask;
+		iBuf.mdpImg.tpVal = mdp_calc_tpval(&iBuf.mdpImg);
+	} else {
+		iBuf.mdpImg.tpVal = 0;
+	}
 
 	if (unlikely(req->src.format >= MDP_IMGTYPE_LIMIT ||
 		     req->dst.format >= MDP_IMGTYPE_LIMIT)) {
@@ -728,4 +789,117 @@ int mdp_ppp_blit(const struct mdp_info *mdp, struct mdp_blit_req *req,
 
 	send_blit(mdp, req, &regs, src_file, dst_file);
 	return 0;
+}
+
+int mdp_ppp_blit(struct fb_info *info, struct mdp_blit_req *req)
+{
+	unsigned long src_start, dst_start;
+	unsigned long src_len = 0;
+	unsigned long dst_len = 0;
+	struct file *p_src_file = 0 , *p_dst_file = 0;
+
+	if (req->flags & MDP_BLIT_SRC_GEM)
+		get_gem_img(&req->src, &src_start, &src_len);
+	else
+		get_img(&req->src, info, &src_start, &src_len, &p_src_file);
+	if (src_len == 0) {
+		printk(KERN_ERR "mdp_ppp: could not retrieve image from "
+		       "memory\n");
+		return -EINVAL;
+	}
+	if (req->flags & MDP_BLIT_DST_GEM)
+		get_gem_img(&req->dst, &dst_start, &dst_len);
+	else
+		get_img(&req->dst, info, &dst_start, &dst_len, &p_dst_file);
+	if (dst_len == 0) {
+		put_img(p_src_file);
+		printk(KERN_ERR "mdp_ppp: could not retrieve image from "
+		       "memory\n");
+		return -EINVAL;
+	}
+
+	return mdp_ppp_blit_addr(info, req, src_start, src_len, 0, 0, dst_start,
+		dst_len, p_src_file, p_dst_file);
+}
+
+static struct mdp_blit_req overlay_req;
+static bool mdp_overlay_req_set;
+
+int mdp_ppp_v4l2_overlay_set(struct fb_info *info, struct mdp_overlay *req)
+{
+	memset(&overlay_req, 0, sizeof(struct mdp_blit_req));
+
+	overlay_req.src.width  = req->src.width;
+	overlay_req.src.height = req->src.height;
+	overlay_req.src.format = req->src.format;
+
+
+	overlay_req.dst.width  = req->dst_rect.w;
+	overlay_req.dst.height = req->dst_rect.h;
+	overlay_req.dst.format = MDP_FB_FORMAT;
+	overlay_req.transp_mask = req->transp_mask;
+	overlay_req.flags = req->flags;
+	overlay_req.alpha = req->alpha;
+
+	overlay_req.src_rect.x = req->src_rect.x;
+	overlay_req.src_rect.y = req->src_rect.y;
+	overlay_req.src_rect.w = req->src_rect.w;
+	overlay_req.src_rect.h = req->src_rect.h;
+	overlay_req.dst_rect.x = req->dst_rect.x;
+	overlay_req.dst_rect.y = req->dst_rect.y;
+	overlay_req.dst_rect.w = req->dst_rect.w;
+	overlay_req.dst_rect.h = req->dst_rect.h;
+	mdp_overlay_req_set = true;
+
+	pr_debug("%s: Overlay parameters:", __func__);
+	pr_debug("Src_Image (%u %u)\n", overlay_req.src.width,
+	overlay_req.src.height);
+
+	if (overlay_req.src.format == MDP_Y_CRCB_H2V2)
+		pr_debug("Overlay format MDP_Y_CRCB_H2V2\n");
+	else if (overlay_req.src.format == MDP_RGB_565)
+		pr_debug("Overlay format MDP_RGB_565\n");
+	else
+		pr_debug("Overlay format(%u) unknown\n",
+		overlay_req.src.format);
+
+	pr_debug("Dst_Image (%u %u)\n", overlay_req.dst.width,
+		overlay_req.dst.height);
+	pr_debug("Src rect: (%u,%u,%u,%u), Dst rect: (%u,%u,%u,%u)\n",
+		overlay_req.src_rect.x, overlay_req.src_rect.y,
+		overlay_req.src_rect.w, overlay_req.src_rect.h,
+		overlay_req.dst_rect.x, overlay_req.dst_rect.y,
+		overlay_req.dst_rect.w, overlay_req.dst_rect.h);
+	return 0;
+}
+
+int mdp_ppp_v4l2_overlay_clear(void)
+{
+	memset(&overlay_req, 0, sizeof(struct mdp_overlay));
+	mdp_overlay_req_set = false;
+	return 0;
+}
+
+int mdp_ppp_v4l2_overlay_play(struct fb_info *info,
+	unsigned long srcp0_addr, unsigned long srcp0_size,
+	unsigned long srcp1_addr, unsigned long srcp1_size)
+{
+	int ret;
+
+	if (!mdp_overlay_req_set) {
+		pr_err("mdp_ppp:v4l2:No overlay set, ignore play req\n");
+		return -EINVAL;
+	}
+
+	overlay_req.dst.width = info->var.xres;
+	overlay_req.dst.height = info->var.yres;
+
+	ret = mdp_ppp_blit_addr(info, &overlay_req,
+		srcp0_addr, srcp0_size, srcp1_addr, srcp1_size,
+		info->fix.smem_start, info->fix.smem_len, NULL, NULL);
+
+	if (ret)
+		pr_err("%s:Blitting overlay failed(%d)\n", __func__, ret);
+
+	return ret;
 }
