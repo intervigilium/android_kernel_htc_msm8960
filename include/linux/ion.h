@@ -79,6 +79,13 @@ enum ion_heap_ids {
 	ION_HEAP_ID_RESERVED = 31 /** Bit reserved for ION_SECURE flag */
 };
 
+enum ion_fixed_position {
+	NOT_FIXED,
+	FIXED_LOW,
+	FIXED_MIDDLE,
+	FIXED_HIGH,
+};
+
 /**
  * Flag to use when allocating to indicate that a heap is secure.
  */
@@ -170,6 +177,7 @@ struct ion_platform_heap {
  *			(see FMEM)
  * @mem_is_fmem		Flag indicating whether this memory is coming from fmem
  *			or not.
+ * @fixed_position	If nonzero, position in the fixed area.
  * @virt_addr:		Virtual address used when using fmem.
  * @iommu_map_all:	Indicates whether we should map whole heap into IOMMU.
  * @iommu_2x_map_domain: Indicates the domain to use for overmapping.
@@ -187,6 +195,7 @@ struct ion_cp_heap_pdata {
 	size_t secure_size; /* Size used for securing heap when heap is shared*/
 	int reusable;
 	int mem_is_fmem;
+	enum ion_fixed_position fixed_position;
 	int iommu_map_all;
 	int iommu_2x_map_domain;
 	ion_virt_addr_t *virt_addr;
@@ -201,6 +210,7 @@ struct ion_cp_heap_pdata {
  * @align:		Alignment requirement for the memory
  * @mem_is_fmem		Flag indicating whether this memory is coming from fmem
  *			or not.
+ * @fixed_position	If nonzero, position in the fixed area.
  * @request_region:	function to be called when the number of allocations
  *			goes from 0 -> 1
  * @release_region:	function to be called when the number of allocations
@@ -212,6 +222,7 @@ struct ion_co_heap_pdata {
 	int adjacent_mem_id;
 	unsigned int align;
 	int mem_is_fmem;
+	enum ion_fixed_position fixed_position;
 	int (*request_region)(void *);
 	int (*release_region)(void *);
 	void *(*setup_region)(void);
