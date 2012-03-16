@@ -102,6 +102,7 @@ struct ddl_buf_addr{
 	struct ion_handle *alloc_handle;
 	u32 buffer_size;
 	enum ddl_mem_area mem_type;
+	void *pil_cookie;
 };
 enum ddl_cmd_state{
 	DDL_CMD_INVALID         = 0x0,
@@ -484,7 +485,7 @@ extern u32 vidc_video_codec_fw_size;
 u32 ddl_fw_init(struct ddl_buf_addr *dram_base);
 void ddl_get_fw_info(const unsigned char **fw_array_addr,
 	unsigned int *fw_size);
-void ddl_fw_release(void);
+void ddl_fw_release(struct ddl_buf_addr *);
 int ddl_vidc_decode_get_avg_time(struct ddl_client_context *ddl);
 void ddl_vidc_decode_reset_avg_time(struct ddl_client_context *ddl);
 void ddl_calc_core_proc_time(const char *func_name, u32 index,
