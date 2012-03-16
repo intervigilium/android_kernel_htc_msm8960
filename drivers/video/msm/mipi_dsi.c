@@ -450,12 +450,13 @@ static int mipi_dsi_probe(struct platform_device *pdev)
 			}
 		}
 
+		if (mipi_dsi_clk_init(pdev))
+			return -EPERM;
+
 		mipi_dsi_resource_initialized = 1;
 
 		return 0;
 	}
-
-	mipi_dsi_clk_init(&pdev->dev);
 
 	if (!mipi_dsi_resource_initialized)
 		return -EPERM;
@@ -470,7 +471,6 @@ static int mipi_dsi_probe(struct platform_device *pdev)
 
 	if (pdev_list_cnt >= MSM_FB_MAX_DEV_LIST)
 		return -ENOMEM;
-
 
 	mdp_dev = platform_device_alloc("mdp", pdev->id);
 	if (!mdp_dev)
