@@ -1816,6 +1816,8 @@ static int mdp_probe(struct platform_device *pdev)
 			rc = -ENODEV;
 			goto mdp_probe_err;
 		}
+		INIT_WORK(&mfd->dma_update_worker,
+			mdp_lcd_update_workqueue_handler);
 #endif
 #if defined (CONFIG_FB_MSM_MDP_ABL)
 		mfd->get_gamma_curvy = mdp_get_gamma_curvy;
