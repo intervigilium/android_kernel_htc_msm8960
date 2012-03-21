@@ -271,8 +271,8 @@ static irqreturn_t mddi_isr(int irq, void *data)
 
 	/* ignore any interrupts we have disabled */
 	active &= mddi->int_enable;
-
 	mddi->got_int |= active;
+
 	wake_up(&mddi->int_wait);
 
 	if (active & MDDI_INT_PRI_LINK_LIST_DONE) {
