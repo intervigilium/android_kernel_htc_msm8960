@@ -566,9 +566,32 @@ void mipi_dsi_phy_init(int panel_ndx, struct msm_panel_info const *panel_info,
 		mipi_dsi_configure_serdes();
 }
 
+void mipi_dsi_prepare_clocks(void)
+{
+	clk_prepare(amp_pclk);
+	clk_prepare(dsi_m_pclk);
+	clk_prepare(dsi_s_pclk);
+	clk_prepare(dsi_byte_div_clk);
+	clk_prepare(dsi_esc_clk);
+}
+
+void mipi_dsi_unprepare_clocks(void)
+{
+	clk_unprepare(dsi_esc_clk);
+	clk_unprepare(dsi_byte_div_clk);
+	clk_unprepare(dsi_m_pclk);
+	clk_unprepare(dsi_s_pclk);
+	clk_unprepare(amp_pclk);
+}
+
 void mipi_dsi_ahb_ctrl(u32 enable)
 {
+	static int ahb_ctrl_done;
 	if (enable) {
+		if (ahb_ctrl_done) {
+			pr_info("%s: ahb clks already ON\n", __func__);
+			return;
+		}
 		clk_enable(amp_pclk); /* clock for AHB-master to AXI */
 		clk_enable(dsi_m_pclk);
 		clk_enable(dsi_s_pclk);
