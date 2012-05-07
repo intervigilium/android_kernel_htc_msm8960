@@ -771,6 +771,7 @@ static int mdp_hist_init_mgmt(struct mdp_hist_mgmt *mgmt, uint32_t block)
 		goto error_extra;
 
 	INIT_WORK(&mgmt->mdp_histogram_worker, mdp_hist_read_work);
+	mgmt->hist = NULL;
 
 	mdp_hist_mgmt_array[index] = mgmt;
 	return 0;
