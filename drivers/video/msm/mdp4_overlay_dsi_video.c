@@ -302,6 +302,7 @@ int mdp4_dsi_video_off(struct platform_device *pdev)
 	}
 #endif
 
+	mdp4_iommu_detach();
 	return ret;
 }
 
