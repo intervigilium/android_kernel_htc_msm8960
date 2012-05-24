@@ -1650,6 +1650,7 @@ void mdp4_mixer_blend_setup(struct mdp4_overlay_pipe *pipe)
 			rgb_src_format |= MDP4_FORMAT_SOLID_FILL;
 			outpdw(rgb_base + 0x50, rgb_src_format);
 			outpdw(rgb_base + 0x1008, constant_color);
+			mdp4_overlay_reg_flush(bg_pipe, 0);
 		}
 #if 1 /* HTC_CSP_START */
 	} else if (fg_alpha && pipe->mixer_num == MDP4_MIXER0) {
