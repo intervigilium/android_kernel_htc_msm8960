@@ -275,6 +275,7 @@ int mdp_lcdc_off(struct platform_device *pdev)
 
 	/* MDP cmd block enable */
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
+	mdp4_mixer_pipe_cleanup(lcdc_pipe->mixer_num);
 	MDP_OUTP(MDP_BASE + LCDC_BASE, 0);
 	/* MDP cmd block disable */
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
@@ -286,7 +287,7 @@ int mdp_lcdc_off(struct platform_device *pdev)
 	mutex_unlock(&mfd->dma->ov_mutex);
 
 	/* delay to make sure the last frame finishes */
-	msleep(16);
+	msleep(20);
 
 #ifdef LCDC_RGB_UNSTAGE
 	/* dis-engage rgb0 from mixer0 */
