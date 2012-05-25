@@ -1968,6 +1968,17 @@ static int mdp_probe(struct platform_device *pdev)
 	return rc;
 }
 
+unsigned int mdp_check_suspended(void)
+{
+	unsigned int ret;
+
+	mutex_lock(&mdp_suspend_mutex);
+	ret = mdp_suspended;
+	mutex_unlock(&mdp_suspend_mutex);
+
+	return ret;
+}
+
 void mdp_footswitch_ctrl(boolean on)
 {
 	mutex_lock(&mdp_suspend_mutex);
@@ -2034,6 +2045,7 @@ static void mdp_early_suspend(struct early_suspend *h)
 #ifdef CONFIG_FB_MSM_DTV
 	mdp4_dtv_set_black_screen();
 #endif
+	mdp4_iommu_detach();
 	mdp_footswitch_ctrl(FALSE);
 }
 

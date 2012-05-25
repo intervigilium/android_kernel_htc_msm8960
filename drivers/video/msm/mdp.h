@@ -753,6 +753,7 @@ int mdp_stop_histogram(struct fb_info *info);
 int mdp_histogram_ctrl(boolean en);
 void __mdp_histogram_kickoff(void);
 void __mdp_histogram_reset(void);
+unsigned int mdp_check_suspended(void);
 void mdp_footswitch_ctrl(boolean on);
 
 #ifdef CONFIG_FB_MSM_MDP303
@@ -772,6 +773,13 @@ static inline void mdp4_overlay_dsi_state_set(int state)
 static inline int mdp4_overlay_dsi_state_get(void)
 {
 	return 0;
+}
+#endif
+
+#ifndef CONFIG_FB_MSM_MDP40
+static inline void mdp4_iommu_detach(void)
+{
+    /* empty */
 }
 #endif
 
