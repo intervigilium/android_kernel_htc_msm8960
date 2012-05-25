@@ -284,6 +284,7 @@ int mdp4_dsi_video_off(struct platform_device *pdev)
 
 	/* MDP cmd block enable */
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
+	mdp4_mixer_pipe_cleanup(dsi_pipe->mixer_num);
 	MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE, 0);
 	/* MDP cmd block disable */
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
@@ -293,7 +294,7 @@ int mdp4_dsi_video_off(struct platform_device *pdev)
 
 #ifdef MIPI_DSI_RGB_UNSTAGE
 	/* delay to make sure the last frame finishes */
-	msleep(100);
+	msleep(20);
 
 	/* dis-engage rgb0 from mixer0 */
 	if (dsi_pipe) {
