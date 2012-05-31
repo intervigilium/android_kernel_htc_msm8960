@@ -2801,7 +2801,7 @@ int mdp4_overlay_play_wait(struct fb_info *info, struct msmfb_overlay_data *req)
 	if (mutex_lock_interruptible(&mfd->dma->ov_mutex))
 		return -EINTR;
 
-	mdp4_overlay_dtv_wait_for_ov(mfd, pipe);
+	mdp4_overlay_dtv_wait4vsync();
 	mdp4_iommu_unmap(pipe);
 
 	mutex_unlock(&mfd->dma->ov_mutex);
