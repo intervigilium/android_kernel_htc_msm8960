@@ -873,4 +873,3 @@ void vidc_sm_set_video_core_timeout_value(struct ddl_buf_addr *shared_mem,
 	DDL_MEM_WRITE_32(shared_mem, VIDC_SM_TIMEOUT_VALUE_ADDR,
 			timeout);
 }
-
