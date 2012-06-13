@@ -432,7 +432,7 @@ void mdp4_overlay_dmae_xy(struct mdp4_overlay_pipe *pipe)
 
 	MDP_OUTP(MDP_BASE + 0xb0004,
 			(pipe->src_height << 16 | pipe->src_width));
-	if (pipe->blt_addr) {
+	if (pipe->dma_blt_addr) {
 		uint32 off, bpp;
 #ifdef BLT_RGB565
 		bpp = 2; /* overlay ouput is RGB565 */
@@ -442,7 +442,7 @@ void mdp4_overlay_dmae_xy(struct mdp4_overlay_pipe *pipe)
 		off = 0;
 		if (pipe->ov_cnt & 0x01)
 			off = pipe->src_height * pipe->src_width * bpp;
-		MDP_OUTP(MDP_BASE + 0xb0008, pipe->blt_addr + off);
+		MDP_OUTP(MDP_BASE + 0xb0008, pipe->dma_blt_addr + off);
 		/* RGB888, output of overlay blending */
 		MDP_OUTP(MDP_BASE + 0xb000c, pipe->src_width * bpp);
 	} else {
@@ -510,7 +510,7 @@ void mdp4_overlay_dmap_xy(struct mdp4_overlay_pipe *pipe)
 	if (!in_interrupt())
 		mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
 
-	if (pipe->blt_addr) {
+	if (pipe->dma_blt_addr) {
 #ifdef BLT_RGB565
 		bpp = 2; /* overlay ouput is RGB565 */
 #else
@@ -519,7 +519,7 @@ void mdp4_overlay_dmap_xy(struct mdp4_overlay_pipe *pipe)
 		off = 0;
 		if (pipe->dmap_cnt & 0x01)
 			off = pipe->src_height * pipe->src_width * bpp;
-		MDP_OUTP(MDP_BASE + 0x90008, pipe->blt_addr + off);
+		MDP_OUTP(MDP_BASE + 0x90008, pipe->dma_blt_addr + off);
 		/* RGB888, output of overlay blending */
 		MDP_OUTP(MDP_BASE + 0x9000c, pipe->src_width * bpp);
 	} else {
@@ -1407,7 +1407,7 @@ void mdp4_overlayproc_cfg(struct mdp4_overlay_pipe *pipe)
 	/*
 	 * BLT support both primary and external external
 	 */
-	if (pipe->blt_addr) {
+	if (pipe->ov_blt_addr) {
 		int off, bpp;
 #ifdef BLT_RGB565
 		bpp = 2;  /* overlay ouput is RGB565 */
@@ -1424,10 +1424,10 @@ void mdp4_overlayproc_cfg(struct mdp4_overlay_pipe *pipe)
 			if (pipe->ov_cnt & 0x01)
 				off = pipe->src_height * pipe->src_width * bpp;
 
-			outpdw(overlay_base + 0x000c, pipe->blt_addr + off);
+			outpdw(overlay_base + 0x000c, pipe->ov_blt_addr + off);
 			/* overlay ouput is RGB888 */
 			outpdw(overlay_base + 0x0010, pipe->src_width * bpp);
-			outpdw(overlay_base + 0x001c, pipe->blt_addr + off);
+			outpdw(overlay_base + 0x001c, pipe->ov_blt_addr + off);
 			/* MDDI - BLT + on demand */
 			outpdw(overlay_base + 0x0004, 0x08);
 
@@ -1447,19 +1447,19 @@ void mdp4_overlayproc_cfg(struct mdp4_overlay_pipe *pipe)
 							pipe->src_width * bpp;
 
 				outpdw(overlay_base + 0x000c,
-						pipe->blt_addr + off);
+						pipe->ov_blt_addr + off);
 				/* overlay ouput is RGB888 */
 				outpdw(overlay_base + 0x0010,
 					((pipe->src_width << 16) |
 					 pipe->src_width));
 				outpdw(overlay_base + 0x001c,
-						pipe->blt_addr + off);
+						pipe->ov_blt_addr + off);
 				off = pipe->src_height * pipe->src_width;
 				/* align chroma to 2k address */
 				off = (off + 2047) & ~2047;
 				/* UV plane adress */
 				outpdw(overlay_base + 0x0020,
-						pipe->blt_addr + off);
+						pipe->ov_blt_addr + off);
 				/* MDDI - BLT + on demand */
 				outpdw(overlay_base + 0x0004, 0x08);
 				/* pseudo planar + writeback */
