@@ -744,7 +744,7 @@ u32 ddl_allocate_dec_hw_buffers(struct ddl_client_context *ddl)
 		else {
 			if (!res_trk_check_for_sec_session()) {
 				memset(dec_bufs->desc.align_virtual_addr,
-					   0, buf_size.sz_desc);
+					0, buf_size.sz_desc);
 				msm_ion_do_cache_op(
 					ddl_context->video_ion_client,
 					dec_bufs->desc.alloc_handle,
