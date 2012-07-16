@@ -199,7 +199,8 @@ int msm_rotator_iommu_map_buf(int mem_id, int domain,
 				*pihdl,	domain, GEN_POOL,
 				SZ_4K, 0, start, len, 0,
 				ION_IOMMU_UNMAP_DELAYED)) {
-				pr_err("ion_map_iommu() failed\n");
+				pr_err("%s(): ion_map_iommu() failed\n",
+					__func__);
 				return -EINVAL;
 			}
 		}
@@ -207,7 +208,7 @@ int msm_rotator_iommu_map_buf(int mem_id, int domain,
 		if (ion_map_iommu(msm_rotator_dev->client,
 			*pihdl,	ROTATOR_SRC_DOMAIN, GEN_POOL,
 			SZ_4K, 0, start, len, 0, ION_IOMMU_UNMAP_DELAYED)) {
-			pr_err("ion_map_iommu() failed\n");
+			pr_err("Non split rot ion_map_iommu() failed\n");
 			return -EINVAL;
 		}
 	}
