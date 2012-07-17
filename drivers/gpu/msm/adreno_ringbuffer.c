@@ -96,12 +96,17 @@ adreno_ringbuffer_waitspace(struct adreno_ringbuffer *rb, unsigned int numcmds,
 			KGSL_DRV_ERR(rb->device,
 			"Timed out while waiting for freespace in ringbuffer "
 			"rptr: 0x%x, wptr: 0x%x\n", rb->rptr, rb->wptr);
-			if (!adreno_dump_and_recover(rb->device))
+			goto err;
+		}
+
+		continue;
+
+err:
+		if (!adreno_dump_and_recover(rb->device))
 				wait_time = jiffies + wait_timeout;
 			else
 				/* GPU is hung and we cannot recover */
 				BUG();
-		}
 	}
 }
 
