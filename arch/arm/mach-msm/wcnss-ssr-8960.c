@@ -128,6 +128,8 @@ static int riva_shutdown(const struct subsys_data *subsys)
 	pr_info("[SSR] pil_force_shutdown is finished\n");
 	flush_delayed_work(&cancel_vote_work);
 	pr_info("[SSR] flush_delayed_work(vote) for shutdown is finished\n");
+	wcnss_flush_delayed_boot_votes();
+	disable_irq_nosync(RIVA_APSS_WDOG_BITE_RESET_RDY_IRQ);
 
 	return 0;
 }
