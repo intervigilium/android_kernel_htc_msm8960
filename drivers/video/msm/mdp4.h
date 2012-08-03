@@ -49,6 +49,12 @@ enum {
 	OVERLAY_PERF_LEVEL4
 };
 
+enum mdp4_overlay_status {
+	MDP4_OVERLAY_TYPE_UNSET,
+	MDP4_OVERLAY_TYPE_SET,
+	MDP4_OVERLAY_TYPE_MAX
+};
+
 typedef int (*cmd_fxn_t)(struct platform_device *pdev);
 
 enum {		/* display */
