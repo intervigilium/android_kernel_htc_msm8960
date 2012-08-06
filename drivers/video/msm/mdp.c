@@ -2604,6 +2604,7 @@ static int mdp_probe(struct platform_device *pdev)
 		else {
 			printk(KERN_ERR "Invalid Selection of destination panel\n");
 			rc = -ENODEV;
+			mdp_clk_ctrl(0);
 			goto mdp_probe_err;
 		}
 
@@ -2652,6 +2653,7 @@ static int mdp_probe(struct platform_device *pdev)
 		else {
 			printk(KERN_ERR "Invalid Selection of destination panel\n");
 			rc = -ENODEV;
+			mdp_clk_ctrl(0);
 			goto mdp_probe_err;
 		}
 		INIT_WORK(&mfd->dma_update_worker,
@@ -2744,6 +2746,7 @@ static int mdp_probe(struct platform_device *pdev)
 				pr_err("%s: writeback panel not supprted\n",
 					 __func__);
 				platform_device_put(msm_fb_dev);
+				mdp_clk_ctrl(0);
 				return -ENODEV;
 			}
 			pdata->on = mdp4_overlay_writeback_on;
