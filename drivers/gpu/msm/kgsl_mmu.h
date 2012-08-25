@@ -136,6 +136,7 @@ struct kgsl_mmu_ops {
 		(struct kgsl_mmu *mmu, uint32_t ts, bool ts_valid);
 	int (*mmu_enable_clk)
 		(struct kgsl_mmu *mmu, int ctx_id);
+	int (*mmu_get_hwpagetable_asid)(struct kgsl_mmu *mmu);
 	int (*mmu_get_pt_lsb)(struct kgsl_mmu *mmu,
 				unsigned int unit_id,
 				enum kgsl_iommu_context_id ctx_id);
@@ -273,6 +274,14 @@ static inline int kgsl_mmu_get_pt_lsb(struct kgsl_mmu *mmu,
 {
 	if (mmu->mmu_ops && mmu->mmu_ops->mmu_get_pt_lsb)
 		return mmu->mmu_ops->mmu_get_pt_lsb(mmu, unit_id, ctx_id);
+	else
+		return 0;
+}
+
+static inline int kgsl_mmu_get_hwpagetable_asid(struct kgsl_mmu *mmu)
+{
+	if (mmu->mmu_ops && mmu->mmu_ops->mmu_get_hwpagetable_asid)
+		return mmu->mmu_ops->mmu_get_hwpagetable_asid(mmu);
 	else
 		return 0;
 }
