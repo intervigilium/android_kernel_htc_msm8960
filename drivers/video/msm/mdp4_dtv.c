@@ -109,7 +109,6 @@ static int dtv_off(struct platform_device *pdev)
 		clk_disable_unprepare(ebi1_clk);
 #endif
 	mdp4_extn_disp = 0;
-	mdp_footswitch_ctrl(FALSE);
 	return ret;
 }
 
@@ -127,7 +126,6 @@ static int dtv_on(struct platform_device *pdev)
 		pm_qos_rate = panel_pixclock_freq / 1000 ;
 	else
 		pm_qos_rate = 58000;
-	mdp_footswitch_ctrl(TRUE);
 	mdp4_extn_disp = 1;
 #ifdef CONFIG_MSM_BUS_SCALING
 	if (dtv_bus_scale_handle > 0)
@@ -151,7 +149,7 @@ static int dtv_on(struct platform_device *pdev)
 	}
 	pr_info("%s: tv_src_clk=%dkHz, pm_qos_rate=%ldkHz, [%d]\n", __func__,
 		mfd->fbi->var.pixclock/1000, pm_qos_rate, ret);
-
+	mfd->panel_info.clk_rate = mfd->fbi->var.pixclock;
 	clk_prepare_enable(hdmi_clk);
 	clk_reset(hdmi_clk, CLK_RESET_ASSERT);
 	udelay(20);
@@ -259,11 +257,11 @@ static int dtv_probe(struct platform_device *pdev)
 	 * get/set panel specific fb info
 	 */
 	mfd->panel_info = pdata->panel_info;
-#ifdef CONFIG_FB_MSM_HDMI_AS_PRIMARY
-	mfd->fb_imgType = MSMFB_DEFAULT_TYPE;
-#else
-	mfd->fb_imgType = MDP_RGB_565;
-#endif
+	if (hdmi_prim_display)
+		mfd->fb_imgType = MSMFB_DEFAULT_TYPE;
+	else
+		mfd->fb_imgType = MDP_RGB_565;
+
 	fbi = mfd->fbi;
 	fbi->var.pixclock = mfd->panel_info.clk_rate;
 	fbi->var.left_margin = mfd->panel_info.lcdc.h_back_porch;

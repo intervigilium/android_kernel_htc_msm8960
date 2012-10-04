@@ -11,7 +11,6 @@
  *
  */
 #include <linux/clk.h>
-#include <mach/clk.h>
 #include "msm_fb.h"
 #include "mdp.h"
 #include "mdp4.h"
@@ -62,6 +61,7 @@ static struct clk *dsi_m_pclk;
 static struct clk *dsi_s_pclk;
 
 static struct clk *amp_pclk;
+int mipi_dsi_clk_on;
 
 int mipi_dsi_clk_init(struct platform_device *pdev)
 {
@@ -325,7 +325,6 @@ void mipi_dsi_phy_rdy_poll(void)
 }
 
 #define PREF_DIV_RATIO 27
-#undef SHOW_PHY_PLL12389a
 struct dsiphy_pll_divider_config pll_divider_config;
 
 int mipi_dsi_phy_pll_config(u32 clk_rate)
@@ -340,27 +339,15 @@ int mipi_dsi_phy_pll_config(u32 clk_rate)
 	/* DSIPHY_PLL_CTRL_1 */
 	fb_divider = ((dividers->fb_divider) / 2) - 1;
 	MIPI_OUTP(MIPI_DSI_BASE + 0x204, fb_divider & 0xff);
-#ifdef SHOW_PHY_PLL12389a
-	pr_err("PLL_1 = 0x%X (AL) 0x%X\n",fb_divider, dividers->fb_divider);
-#endif
 
 	/* DSIPHY_PLL_CTRL_2 */
 	tmp = MIPI_INP(MIPI_DSI_BASE + 0x208);
-#ifdef SHOW_PHY_PLL12389a
-	pr_err("PLL_2 = 0x%X (AL)\n",MIPI_INP(MIPI_DSI_BASE + 0x208));
-#endif
-
 	tmp &= ~0x07;
 	tmp |= (fb_divider >> 8) & 0x07;
 	MIPI_OUTP(MIPI_DSI_BASE + 0x208, tmp);
 
 	/* DSIPHY_PLL_CTRL_3 */
 	tmp = MIPI_INP(MIPI_DSI_BASE + 0x20c);
-#ifdef SHOW_PHY_PLL12389a
-	pr_err("PLL_3 = 0x%X (AL) 0x%X\n",MIPI_INP(MIPI_DSI_BASE + 0x20c),
-			dividers->ref_divider_ratio);
-#endif
-
 	tmp &= ~0x3f;
 	tmp |= (dividers->ref_divider_ratio - 1) & 0x3f;
 	MIPI_OUTP(MIPI_DSI_BASE + 0x20c, tmp);
@@ -377,14 +364,6 @@ int mipi_dsi_phy_pll_config(u32 clk_rate)
 	/* DSIPHY_PLL_CTRL_10 */
 	MIPI_OUTP(MIPI_DSI_BASE + 0x228, (dividers->dsi_clk_divider - 1));
 
-#ifdef SHOW_PHY_PLL12389a
-	pr_err("0x204 = 0x%X (AL)\n",MIPI_INP(MIPI_DSI_BASE + 0x204));
-	pr_err("0x208 = 0x%X (AL)\n",MIPI_INP(MIPI_DSI_BASE + 0x208));
-	pr_err("0x20C = 0x%X (AL)\n",MIPI_INP(MIPI_DSI_BASE + 0x20c));
-	pr_err("0x220 = 0x%X (AL)\n",MIPI_INP(MIPI_DSI_BASE + 0x220));
-	pr_err("0x224 = 0x%X (AL)\n",MIPI_INP(MIPI_DSI_BASE + 0x224));
-	pr_err("0x228 = 0x%X (AL)\n",MIPI_INP(MIPI_DSI_BASE + 0x228));
-#endif
 	return 0;
 }
 
@@ -545,9 +524,6 @@ void mipi_dsi_phy_init(int panel_ndx, struct msm_panel_info const *panel_info,
 	struct mipi_dsi_phy_ctrl *pd;
 	int i, off;
 
-	if (!panel_info)
-		return;
-
 	MIPI_OUTP(MIPI_DSI_BASE + 0x128, 0x0001);/* start phy sw reset */
 	wmb();
 	usleep(1);
@@ -595,7 +571,8 @@ void mipi_dsi_phy_init(int panel_ndx, struct msm_panel_info const *panel_info,
 		off += 4;
 	}
 
-	mipi_dsi_phy_pll_config(panel_info->clk_rate);
+	if (panel_info)
+		mipi_dsi_phy_pll_config(panel_info->clk_rate);
 
 	/* pll ctrl 0 */
 	MIPI_OUTP(MIPI_DSI_BASE + 0x200, pd->pll[0]);
@@ -610,6 +587,20 @@ void mipi_dsi_phy_init(int panel_ndx, struct msm_panel_info const *panel_info,
 
 	if (target_type == 1)
 		mipi_dsi_configure_serdes();
+}
+
+void cont_splash_clk_ctrl(int enable)
+{
+	static int cont_splash_clks_enabled;
+	if (enable && !cont_splash_clks_enabled) {
+			clk_prepare_enable(dsi_byte_div_clk);
+			clk_prepare_enable(dsi_esc_clk);
+			cont_splash_clks_enabled = 1;
+	} else if (!enable && cont_splash_clks_enabled) {
+			clk_disable_unprepare(dsi_byte_div_clk);
+			clk_disable_unprepare(dsi_esc_clk);
+			cont_splash_clks_enabled = 0;
+	}
 }
 
 void mipi_dsi_prepare_clocks(void)
@@ -643,16 +634,26 @@ void mipi_dsi_ahb_ctrl(u32 enable)
 		clk_enable(dsi_s_pclk);
 		mipi_dsi_ahb_en();
 		mipi_dsi_sfpb_cfg();
+		ahb_ctrl_done = 1;
 	} else {
+		if (ahb_ctrl_done == 0) {
+			pr_info("%s: ahb clks already OFF\n", __func__);
+			return;
+		}
 		clk_disable(dsi_m_pclk);
 		clk_disable(dsi_s_pclk);
 		clk_disable(amp_pclk); /* clock for AHB-master to AXI */
+		ahb_ctrl_done = 0;
 	}
 }
 
 void mipi_dsi_clk_enable(void)
 {
 	u32 pll_ctrl = MIPI_INP(MIPI_DSI_BASE + 0x0200);
+	if (mipi_dsi_clk_on) {
+		pr_info("%s: mipi_dsi_clks already ON\n", __func__);
+		return;
+	}
 	MIPI_OUTP(MIPI_DSI_BASE + 0x0200, pll_ctrl | 0x01);
 	mipi_dsi_phy_rdy_poll();
 
@@ -666,17 +667,23 @@ void mipi_dsi_clk_enable(void)
 	mipi_dsi_clk_ctrl(&dsicore_clk, 1);
 	clk_enable(dsi_byte_div_clk);
 	clk_enable(dsi_esc_clk);
+	mipi_dsi_clk_on = 1;
 	mdp4_stat.dsi_clk_on++;
 }
 
 void mipi_dsi_clk_disable(void)
 {
+	if (mipi_dsi_clk_on == 0) {
+		pr_info("%s: mipi_dsi_clks already OFF\n", __func__);
+		return;
+	}
 	clk_disable(dsi_esc_clk);
 	clk_disable(dsi_byte_div_clk);
 	mipi_dsi_pclk_ctrl(&dsi_pclk, 0);
 	mipi_dsi_clk_ctrl(&dsicore_clk, 0);
 	/* DSIPHY_PLL_CTRL_0, disable dsi pll */
 	MIPI_OUTP(MIPI_DSI_BASE + 0x0200, 0x0);
+	mipi_dsi_clk_on = 0;
 	mdp4_stat.dsi_clk_off++;
 }
 
@@ -743,16 +750,12 @@ void hdmi_msm_reset_core(void)
 	hdmi_msm_clk(0);
 	udelay(5);
 	hdmi_msm_clk(1);
-
-	clk_reset(hdmi_msm_state->hdmi_app_clk, CLK_RESET_ASSERT);
-	udelay(20);
-	clk_reset(hdmi_msm_state->hdmi_app_clk, CLK_RESET_DEASSERT);
 }
 
 void hdmi_msm_init_phy(int video_format)
 {
 	uint32 offset;
-	pr_info("Video format is : %u\n", video_format);
+	pr_err("Video format is : %u\n", video_format);
 
 	HDMI_OUTP(HDMI_PHY_REG_0, 0x1B);
 	HDMI_OUTP(HDMI_PHY_REG_1, 0xf2);
