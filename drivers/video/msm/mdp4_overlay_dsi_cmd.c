@@ -26,7 +26,6 @@
 #include <asm/system.h>
 #include <asm/mach-types.h>
 #include <mach/hardware.h>
-#include <mach/debug_display.h>
 
 #include "mdp.h"
 #include "msm_fb.h"
@@ -45,9 +44,6 @@ static unsigned long  tout_expired;
 static int vsync_start_y_adjust = 4;
 
 struct timer_list dsi_clock_timer;
-
-int ov_cnt=0;
-int dsi_done_cnt=0;
 
 void mdp4_overlay_dsi_state_set(int state)
 {
@@ -124,34 +120,24 @@ void mdp4_overlay_update_dsi_cmd(struct msm_fb_data_type *mfd)
 	uint8 *src;
 	int ptype;
 	struct mdp4_overlay_pipe *pipe;
-	struct msm_fb_data_type *tmp_dsi_mfd;
 	int bpp;
 	int ret;
 
 	if (mfd->key != MFD_KEY)
 		return;
 
-	tmp_dsi_mfd = dsi_mfd;
 	dsi_mfd = mfd;		/* keep it */
 
 	/* MDP cmd block enable */
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
 
-	if (unlikely(dsi_pipe == NULL)) {
+	if (dsi_pipe == NULL) {
 		ptype = mdp4_overlay_format2type(mfd->fb_imgType);
-		if (unlikely(ptype < 0)) {
-			printk(KERN_ERR "%s: format2type failed\n", __func__);
-			mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
-			dsi_mfd = tmp_dsi_mfd;
-			return;
-		}
+		if (ptype < 0)
+			printk(KERN_INFO "%s: format2type failed\n", __func__);
 		pipe = mdp4_overlay_pipe_alloc(ptype, MDP4_MIXER0);
-		if (unlikely(pipe == NULL)) {
-			printk(KERN_ERR "%s: pipe_alloc failed\n", __func__);
-			mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
-			dsi_mfd = tmp_dsi_mfd;
-			return;
-		}
+		if (pipe == NULL)
+			printk(KERN_INFO "%s: pipe_alloc failed\n", __func__);
 		pipe->pipe_used++;
 		pipe->mixer_stage  = MDP4_MIXER_STAGE_BASE;
 		pipe->mixer_num  = MDP4_MIXER0;
@@ -220,9 +206,6 @@ void mdp4_overlay_update_dsi_cmd(struct msm_fb_data_type *mfd)
 
 
 	mdp4_overlay_rgb_setup(pipe);
-
-	if (pipe->mixer_num == MDP4_MIXER0)
-		mdp4_overlay_update_layers(mfd, pipe->mixer_num);
 
 	mdp4_mixer_stage_up(pipe);
 
@@ -436,13 +419,11 @@ void mdp4_dma_p_done_dsi(struct mdp_dma_data *dma)
 		if (dsi_pipe->blt_end) {
 			dsi_pipe->blt_end = 0;
 			dsi_pipe->blt_addr = 0;
-			wmb();
 			pr_debug("%s: END, ov_cnt=%d dmap_cnt=%d\n",
 				__func__, dsi_pipe->ov_cnt, dsi_pipe->dmap_cnt);
 			mdp_intr_mask &= ~INTR_DMA_P_DONE;
 			outp32(MDP_INTR_ENABLE, mdp_intr_mask);
 		}
-		ov_cnt++;
 		mdp_pipe_ctrl(MDP_OVERLAY0_BLOCK, MDP_BLOCK_POWER_OFF, TRUE);
 		mdp_disable_irq_nosync(MDP_DMA2_TERM);  /* disable intr */
 		return;
@@ -461,10 +442,9 @@ void mdp4_dma_p_done_dsi(struct mdp_dma_data *dma)
 	/* kick off dmap */
 	outpdw(MDP_BASE + 0x000c, 0x0);
 	mdp4_stat.kickoff_dmap++;
-	wmb();
 	/* trigger dsi cmd engine */
 	mipi_dsi_cmd_mdp_start();
-	ov_cnt++;
+
 	mdp_pipe_ctrl(MDP_OVERLAY0_BLOCK, MDP_BLOCK_POWER_OFF, TRUE);
 }
 
@@ -477,7 +457,6 @@ void mdp4_overlay0_done_dsi_cmd(struct mdp_dma_data *dma)
 	int diff;
 
 	if (dsi_pipe->blt_addr == 0) {
-		ov_cnt++;
 		mdp_pipe_ctrl(MDP_OVERLAY0_BLOCK, MDP_BLOCK_POWER_OFF, TRUE);
 		spin_lock(&mdp_spin_lock);
 		dma->busy = FALSE;
@@ -522,9 +501,7 @@ void mdp4_overlay0_done_dsi_cmd(struct mdp_dma_data *dma)
 	mdp4_blt_xy_update(dsi_pipe);
 	mdp_enable_irq(MDP_DMA2_TERM);	/* enable intr */
 	/* kick off dmap */
-	wmb();
 	outpdw(MDP_BASE + 0x000c, 0x0);
-	wmb();
 	mdp4_stat.kickoff_dmap++;
 	/* trigger dsi cmd engine */
 	mipi_dsi_cmd_mdp_start();
@@ -573,10 +550,8 @@ void mdp4_dsi_cmd_dma_busy_wait(struct msm_fb_data_type *mfd)
 {
 	unsigned long flag;
 	int need_wait = 0;
-#if 1 /* HTC_CSP_START */
-	int retry_count = 0;
-	long timeout;
-#endif /* HTC_CSP_END */
+
+
 
 	if (dsi_clock_timer.function) {
 		if (time_after(jiffies, tout_expired)) {
@@ -609,56 +584,7 @@ void mdp4_dsi_cmd_dma_busy_wait(struct msm_fb_data_type *mfd)
 		/* wait until DMA finishes the current job */
 		pr_debug("%s: pending pid=%d dsi_clk_on=%d\n",
 				__func__, current->pid, mipi_dsi_clk_on);
-#if 1 /* HTC_CSP_START */
-		timeout = wait_for_completion_timeout(&mfd->dma->comp, HZ/5);
-
-		while (!timeout && retry_count++ < 15) {
-			rmb();
-			if (mfd->dma->busy == FALSE) {
-				PR_DISP_INFO("%s(%d)timeout but dma not busy now, cnt:%d\n", __func__, __LINE__, busy_wait_cnt);
-				break;
-			} else {
-				PR_DISP_INFO("%s(%d)timeout but dma still busy\n", __func__, __LINE__);
-				PR_DISP_INFO("###busy_wait_cnt:%d need_wait:%d pending pid=%d dsi_clk_on=%d\n", busy_wait_cnt, need_wait, current->pid, mipi_dsi_clk_on);
-				PR_DISP_INFO("MDP_DISPLAY_STATUS:%x\n", inpdw(msm_mdp_base + 0x18));
-				PR_DISP_INFO("MDP_INTR_STATUS:%x\n", inpdw(MDP_INTR_STATUS));
-				PR_DISP_INFO("MDP_INTR_ENABLE:%x\n", inpdw(MDP_INTR_ENABLE));
-				PR_DISP_INFO("MDP_LAYERMIXER_IN_CFG:%x\n", inpdw(msm_mdp_base + 0x10100));
-				PR_DISP_INFO("MDP_OVERLAY_STATUS:%x\n", inpdw(msm_mdp_base + 0x10000));
-				PR_DISP_INFO("MDP_OVERLAYPROC0_CFG:%x\n", inpdw(msm_mdp_base + 0x10004));
-				PR_DISP_INFO("MDP_OVERLAYPROC1_CFG:%x\n", inpdw(msm_mdp_base + 0x18004));
-				PR_DISP_INFO("RGB1(1):%x %x %x %x\n", inpdw(msm_mdp_base + 0x40000), inpdw(msm_mdp_base + 0x40004), inpdw(msm_mdp_base + 0x40008), inpdw(msm_mdp_base + 0x4000C));
-				PR_DISP_INFO("RGB1(2):%x %x %x %x\n", inpdw(msm_mdp_base + 0x40010), inpdw(msm_mdp_base + 0x40014), inpdw(msm_mdp_base + 0x40018), inpdw(msm_mdp_base + 0x40040));
-				PR_DISP_INFO("RGB1(3):%x %x %x %x\n", inpdw(msm_mdp_base + 0x40050), inpdw(msm_mdp_base + 0x40054), inpdw(msm_mdp_base + 0x40058), inpdw(msm_mdp_base + 0x4005C));
-				PR_DISP_INFO("RGB1(4):%x %x %x %x\n", inpdw(msm_mdp_base + 0x40060), inpdw(msm_mdp_base + 0x41000), inpdw(msm_mdp_base + 0x41004), inpdw(msm_mdp_base + 0x41008));
-				PR_DISP_INFO("RGB2(1):%x %x %x %x\n", inpdw(msm_mdp_base + 0x50000), inpdw(msm_mdp_base + 0x50004), inpdw(msm_mdp_base + 0x50008), inpdw(msm_mdp_base + 0x5000C));
-				PR_DISP_INFO("RGB2(2):%x %x %x %x\n", inpdw(msm_mdp_base + 0x50010), inpdw(msm_mdp_base + 0x50014), inpdw(msm_mdp_base + 0x50018), inpdw(msm_mdp_base + 0x50040));
-				PR_DISP_INFO("RGB2(3):%x %x %x %x\n", inpdw(msm_mdp_base + 0x50050), inpdw(msm_mdp_base + 0x50054), inpdw(msm_mdp_base + 0x50058), inpdw(msm_mdp_base + 0x5005C));
-				PR_DISP_INFO("RGB2(4):%x %x %x %x\n", inpdw(msm_mdp_base + 0x50060), inpdw(msm_mdp_base + 0x51000), inpdw(msm_mdp_base + 0x51004), inpdw(msm_mdp_base + 0x51008));
-				PR_DISP_INFO("VG1 (1):%x %x %x %x\n", inpdw(msm_mdp_base + 0x20000), inpdw(msm_mdp_base + 0x20004), inpdw(msm_mdp_base + 0x20008), inpdw(msm_mdp_base + 0x2000C));
-				PR_DISP_INFO("VG1 (2):%x %x %x %x\n", inpdw(msm_mdp_base + 0x20010), inpdw(msm_mdp_base + 0x20014), inpdw(msm_mdp_base + 0x20018), inpdw(msm_mdp_base + 0x20040));
-				PR_DISP_INFO("VG1 (3):%x %x %x %x\n", inpdw(msm_mdp_base + 0x20050), inpdw(msm_mdp_base + 0x20054), inpdw(msm_mdp_base + 0x20058), inpdw(msm_mdp_base + 0x2005C));
-				PR_DISP_INFO("VG1 (4):%x %x %x %x\n", inpdw(msm_mdp_base + 0x20060), inpdw(msm_mdp_base + 0x21000), inpdw(msm_mdp_base + 0x21004), inpdw(msm_mdp_base + 0x21008));
-				PR_DISP_INFO("VG2 (1):%x %x %x %x\n", inpdw(msm_mdp_base + 0x30000), inpdw(msm_mdp_base + 0x30004), inpdw(msm_mdp_base + 0x30008), inpdw(msm_mdp_base + 0x3000C));
-				PR_DISP_INFO("VG2 (2):%x %x %x %x\n", inpdw(msm_mdp_base + 0x30010), inpdw(msm_mdp_base + 0x30014), inpdw(msm_mdp_base + 0x30018), inpdw(msm_mdp_base + 0x30040));
-				PR_DISP_INFO("VG2 (3):%x %x %x %x\n", inpdw(msm_mdp_base + 0x30050), inpdw(msm_mdp_base + 0x30054), inpdw(msm_mdp_base + 0x30058), inpdw(msm_mdp_base + 0x3005C));
-				PR_DISP_INFO("VG2 (4):%x %x %x %x\n", inpdw(msm_mdp_base + 0x30060), inpdw(msm_mdp_base + 0x31000), inpdw(msm_mdp_base + 0x31004), inpdw(msm_mdp_base + 0x31008));
-
-				timeout = wait_for_completion_timeout(&mfd->dma->comp, HZ/5);
-			}
-		}
-
-		if (retry_count >= 15) {
-			PR_DISP_INFO("###mdp busy wait retry timed out, mfd->dma->busy:%d busy_wait_cnt:%d\n",  mfd->dma->busy, busy_wait_cnt);
-			spin_lock_irqsave(&mdp_spin_lock, flag);
-			if(busy_wait_cnt > 0)
-				--busy_wait_cnt;
-			mfd->dma->busy = FALSE;
-			spin_unlock_irqrestore(&mdp_spin_lock, flag);
-		}
-#else /* HTC_CSP_END */
 		wait_for_completion(&mfd->dma->comp);
-#endif
 	}
 	pr_debug("%s: done pid=%d dsi_clk_on=%d\n",
 			 __func__, current->pid, mipi_dsi_clk_on);
@@ -673,9 +599,6 @@ void mdp4_dsi_cmd_kickoff_video(struct msm_fb_data_type *mfd,
 	 * to be called before kickoff.
 	 * vice versa for blt disabled.
 	 */
-	if (dsi_pipe->blt_addr)
-		mdp4_dsi_blt_dmap_busy_wait(dsi_mfd);
-
 	if (dsi_pipe->blt_addr && dsi_pipe->blt_cnt == 0)
 		mdp4_overlay_update_dsi_cmd(mfd); /* first time */
 	else if (dsi_pipe->blt_addr == 0  && dsi_pipe->blt_cnt) {
@@ -685,6 +608,9 @@ void mdp4_dsi_cmd_kickoff_video(struct msm_fb_data_type *mfd,
 
 	pr_debug("%s: blt_addr=%d blt_cnt=%d\n",
 		__func__, (int)dsi_pipe->blt_addr, dsi_pipe->blt_cnt);
+
+	if (dsi_pipe->blt_addr)
+		mdp4_dsi_blt_dmap_busy_wait(dsi_mfd);
 
 	mdp4_dsi_cmd_overlay_kickoff(mfd, pipe);
 }
@@ -707,11 +633,10 @@ void mdp4_dsi_cmd_overlay_kickoff(struct msm_fb_data_type *mfd,
 	/* change mdp clk */
 	mdp4_set_perf_level();
 
-#ifndef MDP4_DSI_SW_TRIGGER
 	mipi_dsi_mdp_busy_wait(mfd);
+
 	if (dsi_pipe->blt_addr == 0)
 		mipi_dsi_cmd_mdp_start();
-#endif
 
 	mdp4_overlay_dsi_state_set(ST_DSI_PLAYING);
 
@@ -721,28 +646,25 @@ void mdp4_dsi_cmd_overlay_kickoff(struct msm_fb_data_type *mfd,
 	if (dsi_pipe->blt_addr)
 		mfd->dma->dmap_busy = TRUE;
 	/* start OVERLAY pipe */
-	wmb();
 	spin_unlock_irqrestore(&mdp_spin_lock, flag);
 	mdp_pipe_kickoff(MDP_OVERLAY0_TERM, mfd);
-	wmb();
-
 	mdp4_stat.kickoff_ov0++;
-#ifdef MDP4_DSI_SW_TRIGGER
-	if (dsi_pipe->blt_addr == 0) {
-		/* trigger dsi cmd engine */
-		mipi_dsi_cmd_mdp_sw_trigger(mfd);
+}
+
+void mdp_dsi_cmd_overlay_suspend(void)
+{
+	/* dis-engage rgb0 from mixer0 */
+	if (dsi_pipe) {
+		mdp4_mixer_stage_down(dsi_pipe);
+		mdp4_iommu_unmap(dsi_pipe);
 	}
-#endif
 }
 
 void mdp4_dsi_cmd_overlay(struct msm_fb_data_type *mfd)
 {
-	if (!mfd)
-		return;
-
 	mutex_lock(&mfd->dma->ov_mutex);
 
-	if (mfd->panel_power_on) {
+	if (mfd && mfd->panel_power_on) {
 		mdp4_dsi_cmd_dma_busy_wait(mfd);
 
 		if (dsi_pipe && dsi_pipe->blt_addr)
