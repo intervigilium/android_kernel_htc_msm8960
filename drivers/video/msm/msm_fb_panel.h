@@ -159,6 +159,8 @@ struct msm_panel_info {
 	struct lcdc_panel_info lcdc;
 
 	struct mipi_panel_info mipi;
+	/* HTC addition */
+	struct gamma_curvy panel_char;
 };
 
 #define MSM_FB_SINGLE_MODE_PANEL(pinfo)		\
@@ -180,6 +182,15 @@ struct msm_fb_panel_data {
 	int (*power_ctrl) (boolean enable);
 	struct platform_device *next;
 	int (*clk_func) (int enable);
+
+	/* HTC addition */
+	void (*display_on) (struct msm_fb_data_type *);
+#ifdef CONFIG_FB_MSM_CABC
+	void (*enable_cabc) (int, bool, struct msm_fb_data_type *);
+#endif
+#ifdef CONFIG_MSM_AUTOBL_ENABLE
+	int (*autobl_enable) (int on, struct msm_fb_data_type *);
+#endif
 };
 
 /*===========================================================================

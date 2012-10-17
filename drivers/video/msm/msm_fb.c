@@ -48,6 +48,9 @@
 #include "mdp.h"
 #include "mdp4.h"
 
+/* HTC addition */
+#include <mach/msm_panel.h>
+
 #ifdef CONFIG_FB_MSM_LOGO
 #define INIT_IMAGE_FILE "/initlogo.rle"
 extern int load_565rle_image(char *filename);
@@ -162,6 +165,58 @@ static int msm_fb_resource_initialized;
 
 #ifndef CONFIG_FB_BACKLIGHT
 static int lcd_backlight_registered;
+
+/* HTC additions */
+unsigned long auto_bkl_status = 8;
+
+static int acl_switch(int on)
+{
+	if (test_bit(CABC_STATE_DCR, &auto_bkl_status) == on)
+		return 1;
+
+	if (on) {
+		printk(KERN_INFO "turn on DCR\n");
+		set_bit(CABC_STATE_DCR, &auto_bkl_status);
+
+	} else {
+		printk(KERN_INFO "turn off DCR\n");
+		clear_bit(CABC_STATE_DCR, &auto_bkl_status);
+	}
+	return 1;
+}
+
+static ssize_t auto_backlight_show(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t auto_backlight_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
+#define CABC_ATTR(name) __ATTR(name, 0644, auto_backlight_show, auto_backlight_store)
+static struct device_attribute auto_attr = CABC_ATTR(auto);
+
+static ssize_t auto_backlight_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	int i = 0;
+
+	i += scnprintf(buf + i, PAGE_SIZE - 1, "%d\n",
+		test_bit(CABC_STATE_DCR, &auto_bkl_status));
+	return i;
+}
+
+static ssize_t auto_backlight_store(struct device *dev, struct device_attribute *attr,
+	const char *buf, size_t count)
+{
+	int rc;
+	unsigned long res;
+
+	rc = strict_strtoul(buf, 10, &res);
+	if (rc) {
+		printk(KERN_INFO "invalid parameter, %s %d\n", buf, rc);
+		count = -EINVAL;
+		goto err_out;
+	}
+	if (acl_switch(!!res))
+		count = -EIO;
+err_out:
+	return count;
+}
+/* HTC end */
 
 static void msm_fb_set_bl_brightness(struct led_classdev *led_cdev,
 					enum led_brightness value)
@@ -323,9 +378,33 @@ static void msm_fb_remove_sysfs(struct platform_device *pdev)
 	sysfs_remove_group(&mfd->fbi->dev->kobj, &msm_fb_attr_group);
 }
 
+#ifdef CONFIG_FB_MSM_CABC
+/* HTC addition */
+static void cabc_do_work(struct work_struct *work)
+{
+	struct msm_fb_data_type *mfd = container_of(
+			work, struct msm_fb_data_type, cabc_work);
+	struct msm_fb_panel_data *pdata;
+	pdata = (struct msm_fb_panel_data *) mfd->pdev->dev.platform_data;
+
+	if (pdata && pdata->enable_cabc)
+		pdata->enable_cabc(3, 1, mfd);
+}
+
+static void cabc_update(unsigned long data)
+{
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *) data;
+	queue_work(mfd->cabc_wq, &mfd->cabc_work);
+}
+#endif
+
 static int msm_fb_probe(struct platform_device *pdev)
 {
 	struct msm_fb_data_type *mfd;
+#ifdef CONFIG_FB_MSM_CABC
+	/* HTC addition */
+	struct msm_fb_panel_data *pdata;
+#endif
 	int rc;
 	int err = 0;
 
@@ -389,8 +468,26 @@ static int msm_fb_probe(struct platform_device *pdev)
 	if (!lcd_backlight_registered) {
 		if (led_classdev_register(&pdev->dev, &backlight_led))
 			printk(KERN_ERR "led_classdev_register failed\n");
-		else
+		else {
 			lcd_backlight_registered = 1;
+			/* HTC addition */
+			if (device_create_file(backlight_led.dev, &auto_attr))
+				printk(KERN_INFO "attr creation failed\n");
+		}
+	}
+#endif
+
+#ifdef CONFIG_FB_MSM_CABC
+	/* HTC addition */
+	pdata = (struct msm_fb_panel_data *) mfd->pdev->dev.platform_data;
+	if (pdata && pdata->enable_cabc) {
+		INIT_WORK(&mfd->cabc_work, cabc_do_work);
+		mfd->cabc_wq = create_workqueue("cabc_wq");
+		if (!mfd->cabc_wq)
+			printk(KERN_ERR "%s: unable to create cabc_wq\n",
+					__func__);
+		setup_timer(&mfd->cabc_update_timer,
+				cabc_update, (unsigned long) mfd);
 	}
 #endif
 
@@ -697,6 +794,10 @@ static void msmfb_early_suspend(struct early_suspend *h)
 {
 	struct msm_fb_data_type *mfd = container_of(h, struct msm_fb_data_type,
 						    early_suspend);
+#ifdef CONFIG_FB_MSM_CABC
+	/* HTC addition */
+	struct msm_fb_panel_data *pdata;
+#endif
 #if defined(CONFIG_FB_MSM_MDP303)
 	/*
 	* For MDP with overlay, set framebuffer with black pixels
@@ -713,6 +814,12 @@ static void msmfb_early_suspend(struct early_suspend *h)
 		break;
 	}
 #endif
+#ifdef CONFIG_FB_MSM_CABC
+	/* HTC addition */
+	pdata = (struct msm_fb_panel_data *) mfd->pdev->dev.platform_data;
+	if (pdata && pdata->enable_cabc)
+		del_timer_sync(&mfd->cabc_update_timer);
+#endif
 	msm_fb_suspend_sub(mfd);
 }
 
@@ -723,6 +830,27 @@ static void msmfb_early_resume(struct early_suspend *h)
 	msm_fb_resume_sub(mfd);
 }
 #endif
+
+#ifdef CONFIG_HTC_ONMODE_CHARGING
+/* HTC addition */
+static void msmfb_onchg_suspend(struct early_suspend *h)
+{
+	struct msm_fb_data_type *mfd = container_of(h, struct msm_fb_data_type,
+			onchg_suspend);
+	MSM_FB_INFO("%s: start\n", __func__);
+	msm_fb_suspend_sub(mfd);
+	MSM_FB_INFO("%s: done\n", __func__);
+}
+
+static void msmfb_onchg_resume(struct early_suspend *h)
+{
+	struct msm_fb_data_type *mfd = container_of(h, struct msm_fb_data_type,
+			onchg_suspend);
+	MSM_FB_INFO("%s: start\n", __func__);
+	msm_fb_resume_sub(mfd);
+	MSM_FB_INFO("%s: done\n", __func__);
+}
+#endif /* CONFIG_HTC_ONMODE_CHARGING */
 
 static int unset_bl_level, bl_updated;
 static int bl_level_old;
@@ -752,6 +880,24 @@ void msm_fb_set_backlight(struct msm_fb_data_type *mfd, __u32 bkl_lvl)
 		up(&mfd->sem);
 	}
 }
+
+/* HTC addition */
+void msm_fb_display_on(struct msm_fb_data_type *mfd)
+{
+	struct msm_fb_panel_data *pdata;
+	pdata = (struct msm_fb_panel_data *) mfd->pdev->dev.platform_data;
+
+	if (pdata && pdata->display_on) {
+		down(&mfd->sem);
+		pdata->display_on(mfd);
+#ifdef CONFIG_FB_MSM_CABC
+		if (pdata && pdata->enable_cabc)
+			mod_timer(&mfd->cabc_update_timer,
+					jiffies + msecs_to_jiffies(100));
+#endif
+	}
+}
+/* HTC end */
 
 static int msm_fb_blank_sub(int blank_mode, struct fb_info *info,
 			    boolean op_enable)
@@ -923,6 +1069,32 @@ static int msm_fb_set_lut(struct fb_cmap *cmap, struct fb_info *info)
 		return -ENODEV;
 
 	mfd->lut_update(info, cmap);
+	return 0;
+}
+
+/* HTC addition */
+static int msm_fb_get_lut(struct fb_info *info, void __user *p)
+{
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *) info->par;
+	struct gamma_curvy gc;
+	int ret;
+
+	if (!mfd->get_gamma_curvy) {
+		return -ENODEV;
+	}
+
+	if (copy_from_user(&gc, p, sizeof(struct gamma_curvy))) {
+		return -EFAULT;
+	}
+
+	ret = mfd->get_gamma_curvy(mfd->panel_info, &gc);
+
+	if (ret) {
+		printk(KERN_ERR "%s: ioctl failed\n", __func__);
+		return ret;
+	}
+	ret = copy_to_user(p, &gc, sizeof(struct gamma_curvy));
+
 	return 0;
 }
 
@@ -1385,6 +1557,13 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 		mfd->early_suspend.resume = msmfb_early_resume;
 		mfd->early_suspend.level = EARLY_SUSPEND_LEVEL_DISABLE_FB - 2;
 		register_early_suspend(&mfd->early_suspend);
+#ifdef CONFIG_HTC_ONMODE_CHARGING
+		/* HTC addition */
+		mfd->onchg_suspend.suspend = msmfb_onchg_suspend;
+		mfd->onchg_suspend.resume = msmfb_onchg_resume;
+		mfd->onchg_suspend.level = EARLY_SUSPEND_LEVEL_DISABLE_FB - 2;
+		register_onchg_suspend(&mfd->onchg_suspend);
+#endif
 	}
 #endif
 
@@ -1672,6 +1851,7 @@ static int msm_fb_pan_display(struct fb_var_screeninfo *var,
 	mdp_dma_pan_update(info);
 	up(&msm_fb_pan_sem);
 
+	/* TODO: figure out how to integrate HTC backlight? */
 	if (unset_bl_level && !bl_updated) {
 		pdata = (struct msm_fb_panel_data *)mfd->pdev->
 			dev.platform_data;
@@ -1683,9 +1863,16 @@ static int msm_fb_pan_display(struct fb_var_screeninfo *var,
 			up(&mfd->sem);
 			bl_updated = 1;
 		}
+#ifdef CONFIG_MSM_AUTOBL_ENABLE
+		/* HTC addition */
+		if (pdata->autobl_enable) {
+			pdata->autobl_enable(auto_bkl_status, mfd);
+		}
+#endif
 	}
 
 	++mfd->panel_info.frame_count;
+
 	return 0;
 }
 
@@ -2802,6 +2989,12 @@ static int msmfb_overlay_play(struct fb_info *info, unsigned long *argp)
 			up(&mfd->sem);
 			bl_updated = 1;
 		}
+#ifdef CONFIG_MSM_AUTOBL_ENABLE
+		/* HTC addition */
+		if (pdata->autobl_enable) {
+			pdata->autobl_enable(auto_bkl_status, mfd);
+		}
+#endif
 	}
 
 	return ret;
@@ -3449,6 +3642,13 @@ static int msm_fb_ioctl(struct fb_info *info, unsigned int cmd,
 			return ret;
 
 		ret = msmfb_handle_pp_ioctl(&mdp_pp);
+		break;
+
+	/* HTC addition */
+	case MSMFB_GET_GAMMA_CURVY:
+		mutex_lock(&msm_fb_ioctl_lut_sem);
+		ret = msm_fb_get_lut(info, argp);
+		mutex_unlock(&msm_fb_ioctl_lut_sem);
 		break;
 
 	default:

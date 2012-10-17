@@ -140,6 +140,10 @@ struct timeval mdp_ppp_timeval;
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static struct early_suspend early_suspend;
 #endif
+#ifdef CONFIG_HTC_ONMODE_CHARGING
+/* HTC addition */
+static struct early_suspend onchg_suspend;
+#endif
 
 static u32 mdp_irq;
 
@@ -148,6 +152,84 @@ static uint32 mdp_prim_panel_type = NO_PANEL;
 
 struct list_head mdp_hist_lut_list;
 DEFINE_MUTEX(mdp_hist_lut_list_mutex);
+
+/* HTC additions */
+void mdp_color_enhancement(const struct mdp_reg *reg_seq, int size)
+{
+	int i;
+
+	for (i = 0; i < size; i++) {
+		if (reg_seq[i].mask == 0x0)
+			outpdw(MDP_BASE + reg_seq[i].reg, reg_seq[i].val);
+	}
+	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
+}
+
+int mdp_get_gamma_curvy(struct msm_panel_info pinfo, struct gamma_curvy *gc)
+{
+	uint32_t *ref_y_gamma;
+	uint32_t *ref_y_shade;
+	uint32_t *ref_bl_lvl;
+	uint32_t *ref_y_lvl;
+	int i = 0;
+	unsigned int addr, val;
+	u16 *r, *g, *b;
+	int mdp_lut_i = 0;
+	struct fb_cmap cmap;
+
+	ref_y_gamma = pinfo.panel_char.ref_y_gamma;
+	ref_y_shade = pinfo.panel_char.ref_y_shade;
+	ref_bl_lvl = pinfo.panel_char.ref_bl_lvl;
+	ref_y_lvl = pinfo.panel_char.ref_y_lvl;
+
+	/* size fo ref_Y_gamma should be the same as size of ref_Y_shade*/
+	if (sizeof(gc->ref_y_gamma) / 4 != sizeof(gc->ref_y_shade) / 4)
+		return -1;
+
+	/* size fo ref_bl_lvl should be the same as size of ref_Y_lvl*/
+	if (sizeof(gc->ref_bl_lvl) / 4 != sizeof(gc->ref_y_lvl) / 4)
+		return -1;
+
+	gc->gamma_len = sizeof(gc->ref_y_gamma) / 4;
+	gc->bl_len = sizeof(gc->ref_bl_lvl) / 4;
+
+	for (i = 0; i < gc->gamma_len; i++) {
+		gc->ref_y_gamma[i] = ref_y_gamma[i];
+		gc->ref_y_shade[i] = ref_y_shade[i];
+	}
+
+	for (i = 0; i < gc->bl_len; i++) {
+		gc->ref_bl_lvl[i] = ref_bl_lvl[i];
+		gc->ref_y_lvl[i] = ref_y_lvl[i];
+	}
+	/* get lut */
+	cmap = gc->gc_tbl;
+	r = cmap.red;
+	g = cmap.green;
+	b = cmap.blue;
+
+	/* check if lut component is enabled */
+	val = inpdw(MDP_BASE + 0x90070);
+	val = val & (0x7);
+	if ( 0x7 == val) {
+		for (i = 0; i < cmap.len; i++) {
+			addr = 0x94800 + (0x400 * mdp_lut_i) + cmap.start * 4 + i * 4;
+			val = inpdw(MDP_BASE + addr);
+			*r++ = (val& 0xff0000) >> 16;
+			*b++ = (val& 0xff00) >> 8;
+			*g++ = val& 0xff;
+		}
+	} else {
+		for (i = 0; i < cmap.len; i++) {
+			*r++ = i;
+			*b++ = i;
+			*g++ = i;
+		}
+	}
+
+	gc->gc_tbl = cmap;
+	return 0;
+}
 
 uint32_t mdp_block2base(uint32_t block)
 {
@@ -2164,6 +2246,13 @@ static int mdp_probe(struct platform_device *pdev)
 #ifdef CONFIG_FB_MSM_OVERLAY
 		mdp_hw_cursor_init();
 #endif
+		/* HTC additions */
+		if (mdp_pdata->mdp_color_enhance)
+			mdp_pdata->mdp_color_enhance();
+
+		if (mdp_pdata->mdp_gamma)
+			mdp_pdata->mdp_gamma();
+
 		mdp_resource_initialized = 1;
 		return 0;
 	}
@@ -2348,6 +2437,10 @@ static int mdp_probe(struct platform_device *pdev)
 			if_no = SECONDARY_INTF_SEL;
 			mfd->dma = &dma_s_data;
 		}
+#ifdef CONFIG_FB_MSM_MDP_ABL
+		/* HTC additions */
+		mfd->get_gamma_curvy = mdp_get_gamma_curvy;
+#endif
 		mfd->lut_update = mdp_lut_update_nonlcdc;
 		mfd->do_histogram = mdp_do_histogram;
 		mdp4_display_intf_sel(if_no, DSI_CMD_INTF);
@@ -2623,6 +2716,12 @@ static int mdp_register_driver(void)
 	early_suspend.suspend = mdp_early_suspend;
 	early_suspend.resume = mdp_early_resume;
 	register_early_suspend(&early_suspend);
+#ifdef CONFIG_HTC_ONMODE_CHARGING
+	/* HTC additions */
+	onchg_suspend.level = EARLY_SUSPEND_LEVEL_DISABLE_FB - 1;
+	onchg_suspend.suspend = mdp_early_suspend;
+	register_onchg_suspend(&onchg_suspend);
+#endif
 #endif
 
 	return platform_driver_register(&mdp_driver);
