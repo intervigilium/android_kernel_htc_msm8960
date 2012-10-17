@@ -2953,6 +2953,25 @@ int mdp4_overlay_play(struct fb_info *info, struct msmfb_overlay_data *req)
 		mdp4_iommu_unmap(pipe);
 	mdp4_stat.overlay_play[pipe->mixer_num]++;
 	mutex_unlock(&mfd->dma->ov_mutex);
+
+	/* HTC addition */
+	if (mfd->request_display_on) {
+		msm_fb_display_on(mfd);
+
+		if (!ignore_bkl_zero) {
+			pr_info("%s: bl_level %d ignore bkl_zero %d\n",
+				__func__, mfd->bl_level, ignore_bkl_zero);
+			if (mfd->bl_level == 0)
+				mfd->bl_level = DEFAULT_BRIGHTNESS;
+			ignore_bkl_zero = true;
+		}
+
+		if (mfd->bl_level != 0)
+			msm_fb_set_backlight(mfd, mfd->bl_level);
+
+		mfd->request_display_on = 0;
+		pr_info("%s: msm_fb_display_on done\n", __func__);
+	}
 end:
 #ifdef CONFIG_ANDROID_PMEM
 	if (srcp0_file)
