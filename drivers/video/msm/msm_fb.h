@@ -108,6 +108,8 @@ struct msm_fb_data_type {
 	struct hrtimer dma_hrtimer;
 
 	boolean panel_power_on;
+	/* HTC addition */
+	boolean request_display_on;
 	struct work_struct dma_update_worker;
 	struct semaphore sem;
 
@@ -132,6 +134,9 @@ struct msm_fb_data_type {
 			      struct fb_cmap *cmap);
 	int (*do_histogram) (struct fb_info *info,
 			      struct mdp_histogram_data *hist);
+	/* HTC addition */
+	int (*get_gamma_curvy) (struct msm_panel_info pinfo,
+			      struct gamma_curvy *gc);
 	void *cursor_buf;
 	void *cursor_buf_phys;
 
@@ -153,6 +158,10 @@ struct msm_fb_data_type {
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	struct early_suspend early_suspend;
+#ifdef CONFIG_HTC_ONMODE_CHARGING
+	/* HTC addition */
+	struct early_suspend onchg_suspend;
+#endif
 #ifdef CONFIG_FB_MSM_MDDI
 	struct early_suspend mddi_early_suspend;
 	struct early_suspend mddi_ext_early_suspend;
@@ -181,6 +190,12 @@ struct msm_fb_data_type {
 	u32 use_ov0_blt, ov0_blt_state;
 	u32 use_ov1_blt, ov1_blt_state;
 	u32 writeback_state;
+#ifdef CONFIG_FB_MSM_CABC
+	/* HTC addition */
+	struct workqueue_struct *cabc_wq;
+	struct work_struct cabc_work;
+	struct timer_list cabc_update_timer;
+#endif
 	int cont_splash_done;
 };
 
@@ -201,6 +216,8 @@ int msm_fb_writeback_stop(struct fb_info *info);
 int msm_fb_writeback_terminate(struct fb_info *info);
 int msm_fb_detect_client(const char *name);
 int calc_fb_offset(struct msm_fb_data_type *mfd, struct fb_info *fbi, int bpp);
+/* HTC addition */
+void msm_fb_display_on(struct msm_fb_data_type *mfd);
 
 #ifdef CONFIG_FB_BACKLIGHT
 void msm_fb_config_backlight(struct msm_fb_data_type *mfd);
