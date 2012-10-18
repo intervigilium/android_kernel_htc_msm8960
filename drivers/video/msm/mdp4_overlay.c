@@ -1487,6 +1487,7 @@ static void mdp4_overlay_bg_solidfill_clear(uint32 mixer_num)
 			outpdw(rgb_base + 0x0058, bg_pipe->op_mode);
 			mdp4_overlay_reg_flush(bg_pipe, 0);
 		}
+	}
 }
 
 void mdp4_mixer_pipe_cleanup(int mixer)
