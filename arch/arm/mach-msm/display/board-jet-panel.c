@@ -3853,6 +3853,7 @@ static int mipi_cmd_novatek_blue_qhd_pt_init(void)
 	pinfo.mipi.wr_mem_continue = 0x3c;
 	pinfo.mipi.wr_mem_start = 0x2c;
 	pinfo.mipi.dsi_phy_db = &dsi_fig_cmd_mode_phy_db;
+	pinfo.mipi.esc_byte_ratio = 4;
 #ifdef CONFIG_FB_MSM_SELF_REFRESH
 	jet_panel_data.self_refresh_switch = NULL;
 #endif
@@ -3959,6 +3960,7 @@ static int mipi_video_auo_hd720p_init(void)
 	pinfo.mipi.dma_trigger = DSI_CMD_TRIGGER_SW;
 	pinfo.mipi.frame_rate = 60;
 	pinfo.mipi.dsi_phy_db = &nova_dsi_video_mode_phy_db;
+	pinfo.mipi.esc_byte_ratio = 4;
 
 	ret = mipi_jet_device_register(&pinfo, MIPI_DSI_PRIM,
 						MIPI_DSI_PANEL_WVGA_PT);
@@ -4103,6 +4105,7 @@ static int mipi_video_sony_hd720p_init(void)
 	pinfo.mipi.dma_trigger = DSI_CMD_TRIGGER_SW;
 	pinfo.mipi.frame_rate = 60;
 	pinfo.mipi.dsi_phy_db = &nova_dsi_video_mode_phy_db;
+	pinfo.mipi.esc_byte_ratio = 4;
 
 	ret = mipi_jet_device_register(&pinfo, MIPI_DSI_PRIM,
 						MIPI_DSI_PANEL_WVGA_PT);
