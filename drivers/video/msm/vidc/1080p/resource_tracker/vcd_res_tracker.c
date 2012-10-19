@@ -67,7 +67,7 @@ static void *res_trk_pmem_map
 	unsigned long *kernel_vaddr = NULL;
 
 	ddl_context = ddl_get_context();
-	if (res_trk_get_enable_ion()) {
+	if (res_trk_get_enable_ion() && addr->alloc_handle) {
 		kernel_vaddr = (unsigned long *) ion_map_kernel(
 					ddl_context->video_ion_client,
 					addr->alloc_handle, UNCACHED);
@@ -100,31 +100,40 @@ static void *res_trk_pmem_map
 		addr->align_virtual_addr = addr->virtual_base_addr + offset;
 		addr->buffer_size = buffer_size;
 	} else {
-		if (!addr->alloced_phys_addr) {
-			pr_err(" %s() alloced addres NULL", __func__);
-			goto bail_out;
-		}
-		flags = MSM_SUBSYSTEM_MAP_IOVA | MSM_SUBSYSTEM_MAP_KADDR;
-		if (alignment == DDL_KILO_BYTE(128))
-				index = 1;
-		else if (alignment > SZ_4K)
-			flags |= MSM_SUBSYSTEM_ALIGN_IOVA_8K;
+		if (!res_trk_check_for_sec_session()) {
+			if (!addr->alloced_phys_addr) {
+				pr_err(" %s() alloced addres NULL", __func__);
+				goto bail_out;
+			}
+			flags = MSM_SUBSYSTEM_MAP_IOVA|MSM_SUBSYSTEM_MAP_KADDR;
+			if (alignment == DDL_KILO_BYTE(128))
+					index = 1;
+			else if (alignment > SZ_4K)
+				flags |= MSM_SUBSYSTEM_ALIGN_IOVA_8K;
 
-		addr->mapped_buffer =
-		msm_subsystem_map_buffer((unsigned long)addr->alloced_phys_addr,
-		sz, flags, &restrk_mmu_subsystem[index],
-		sizeof(restrk_mmu_subsystem[index])/sizeof(unsigned int));
-		if (IS_ERR(addr->mapped_buffer)) {
-			pr_err(" %s() buffer map failed", __func__);
-			goto bail_out;
+			addr->mapped_buffer =
+			msm_subsystem_map_buffer(
+			(unsigned long)addr->alloced_phys_addr,
+			sz, flags, &restrk_mmu_subsystem[index],
+			sizeof(restrk_mmu_subsystem[index])
+			/sizeof(unsigned int));
+			if (IS_ERR(addr->mapped_buffer)) {
+				pr_err(" %s() buffer map failed", __func__);
+				goto bail_out;
+			}
+			mapped_buffer = addr->mapped_buffer;
+			if (!mapped_buffer->vaddr || !mapped_buffer->iova[0]) {
+				pr_err("%s() map buffers failed\n", __func__);
+				goto bail_out;
+			}
+			addr->physical_base_addr = (u8 *)mapped_buffer->iova[0];
+			addr->virtual_base_addr = mapped_buffer->vaddr;
+		} else {
+			addr->physical_base_addr = (u8 *)
+					 addr->alloced_phys_addr;
+			addr->virtual_base_addr = (u8 *)
+					addr->alloced_phys_addr;
 		}
-		mapped_buffer = addr->mapped_buffer;
-		if (!mapped_buffer->vaddr || !mapped_buffer->iova[0]) {
-			pr_err("%s() map buffers failed\n", __func__);
-			goto bail_out;
-		}
-		addr->physical_base_addr = (u8 *)mapped_buffer->iova[0];
-		addr->virtual_base_addr = mapped_buffer->vaddr;
 		addr->align_physical_addr = (u8 *) DDL_ALIGN((u32)
 		addr->physical_base_addr, alignment);
 		offset = (u32)(addr->align_physical_addr -
@@ -162,8 +171,8 @@ static int res_trk_pmem_alloc
 	(struct ddl_buf_addr *addr, size_t sz, u32 alignment)
 {
 	u32 alloc_size;
-	int rc = 0;
 	struct ddl_context *ddl_context;
+	int rc = 0;
 	DBG_PMEM("\n%s() IN: Requested alloc size(%u)", __func__, (u32)sz);
 	if (!addr) {
 		DDL_MSG_ERROR("\n%s() Invalid Parameters", __func__);
@@ -321,11 +330,11 @@ u32 res_trk_enable_clocks(void)
 		VCDRES_MSG_LOW("%s(): Enabling the clocks\n", __func__);
 		if (resource_context.vcodec_clk &&
 			resource_context.vcodec_pclk) {
-			if (clk_prepare_enable(resource_context.vcodec_pclk)) {
+			if (clk_enable(resource_context.vcodec_pclk)) {
 				VCDRES_MSG_ERROR("vidc pclk Enable fail\n");
 				goto bail_out;
 			}
-			if (clk_prepare_enable(resource_context.vcodec_clk)) {
+			if (clk_enable(resource_context.vcodec_clk)) {
 				VCDRES_MSG_ERROR("vidc core clk Enable fail\n");
 				goto vidc_disable_pclk;
 			}
@@ -341,7 +350,7 @@ u32 res_trk_enable_clocks(void)
 	mutex_unlock(&resource_context.lock);
 	return true;
 vidc_disable_pclk:
-	clk_disable_unprepare(resource_context.vcodec_pclk);
+	clk_disable(resource_context.vcodec_pclk);
 bail_out:
 	mutex_unlock(&resource_context.lock);
 	return false;
@@ -388,9 +397,9 @@ u32 res_trk_disable_clocks(void)
 		VCDRES_MSG_LOW("%s(): Disabling the clocks ...\n", __func__);
 		resource_context.clock_enabled = 0;
 		if (resource_context.vcodec_clk)
-			clk_disable_unprepare(resource_context.vcodec_clk);
+			clk_disable(resource_context.vcodec_clk);
 		if (resource_context.vcodec_pclk)
-			clk_disable_unprepare(resource_context.vcodec_pclk);
+			clk_disable(resource_context.vcodec_pclk);
 		status = true;
 	}
 	mutex_unlock(&resource_context.lock);
@@ -724,7 +733,7 @@ u32 res_trk_get_firmware_addr(struct ddl_buf_addr *firm_addr)
 		goto fail_map;
 	}
 	memcpy(firm_addr, &resource_context.firmware_addr,
-		sizeof(struct ddl_buf_addr));
+			sizeof(struct ddl_buf_addr));
 	return 0;
 fail_map:
 	res_trk_pmem_free(&resource_context.firmware_addr);
@@ -806,10 +815,6 @@ u32 res_trk_get_disable_dmx(void){
 	return resource_context.disable_dmx;
 }
 
-u32 res_trk_get_min_dpb_count(void){
-	return resource_context.vidc_platform_data->cont_mode_dpb_count;
-}
-
 void res_trk_set_mem_type(enum ddl_mem_area mem_type)
 {
 	resource_context.res_mem_type = mem_type;
@@ -838,7 +843,7 @@ int res_trk_enable_iommu_clocks(void)
 			ret = PTR_ERR(vidc_mmu_clks[i].mmu_clk);
 		}
 		if (!ret) {
-			ret = clk_prepare_enable(vidc_mmu_clks[i].mmu_clk);
+			ret = clk_enable(vidc_mmu_clks[i].mmu_clk);
 			if (ret) {
 				clk_put(vidc_mmu_clks[i].mmu_clk);
 				vidc_mmu_clks[i].mmu_clk = NULL;
@@ -846,7 +851,7 @@ int res_trk_enable_iommu_clocks(void)
 		}
 		if (ret) {
 			for (i--; i >= 0; i--) {
-				clk_disable_unprepare(vidc_mmu_clks[i].mmu_clk);
+				clk_disable(vidc_mmu_clks[i].mmu_clk);
 				clk_put(vidc_mmu_clks[i].mmu_clk);
 				vidc_mmu_clks[i].mmu_clk = NULL;
 			}
@@ -867,7 +872,7 @@ int res_trk_disable_iommu_clocks(void)
 	}
 	resource_context.mmu_clks_on = 0;
 	for (i = 0; i < ARRAY_SIZE(vidc_mmu_clks); i++) {
-		clk_disable_unprepare(vidc_mmu_clks[i].mmu_clk);
+		clk_disable(vidc_mmu_clks[i].mmu_clk);
 		clk_put(vidc_mmu_clks[i].mmu_clk);
 		vidc_mmu_clks[i].mmu_clk = NULL;
 	}
@@ -951,18 +956,4 @@ u32 get_res_trk_perf_level(enum vcd_perf_level perf_level)
 		res_trk_perf_level = -EINVAL;
 	}
 	return res_trk_perf_level;
-}
-
-u32 res_trk_estimate_perf_level(u32 pn_perf_lvl)
-{
-	VCDRES_MSG_MED("%s(), req_perf_lvl = %d", __func__, pn_perf_lvl);
-	if ((pn_perf_lvl >= RESTRK_1080P_VGA_PERF_LEVEL) &&
-		(pn_perf_lvl < RESTRK_1080P_720P_PERF_LEVEL)) {
-		return RESTRK_1080P_720P_PERF_LEVEL;
-	} else if ((pn_perf_lvl >= RESTRK_1080P_720P_PERF_LEVEL) &&
-			(pn_perf_lvl < RESTRK_1080P_MAX_PERF_LEVEL)) {
-		return RESTRK_1080P_MAX_PERF_LEVEL;
-	} else {
-		return pn_perf_lvl;
-	}
 }
