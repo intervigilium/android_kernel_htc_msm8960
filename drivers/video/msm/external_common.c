@@ -83,6 +83,15 @@ const char edid_blk1[0x100] = {
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xDF};
 #endif /* DEBUG_EDID */
 
+/* Needed for compilation */
+void mdp_vid_quant_set(void)
+{
+       /*
+        * Support for quantization to be added
+        * only when MHL support is included.
+        */
+}
+
 const char *video_format_2string(uint32 format)
 {
 	switch (format) {
