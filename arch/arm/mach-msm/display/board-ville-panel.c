@@ -516,13 +516,11 @@ static inline void mipi_dsi_set_backlight(struct msm_fb_data_type *mfd)
 #endif
 
 	if (mfd->panel_info.type == MIPI_CMD_PANEL) {
-		mdp4_dsi_cmd_dma_busy_wait(mfd);
-		mdp4_dsi_blt_dmap_busy_wait(mfd);
 		mipi_dsi_mdp_busy_wait(mfd);
 	}
 
 	if (panel_type == PANEL_ID_VILLE_SAMSUNG_SG || panel_type == PANEL_ID_VILLE_SAMSUNG_SG_C2)
-		mipi_dsi_cmds_tx(mfd, &ville_panel_tx_buf, samsung_cmd_backlight_cmds,
+		mipi_dsi_cmds_tx(&ville_panel_tx_buf, samsung_cmd_backlight_cmds,
 				ARRAY_SIZE(samsung_cmd_backlight_cmds));
 	PR_DISP_DEBUG("%s+ bl_level=%d\n", __func__, mfd->bl_level);
 	mutex_unlock(&mfd->dma->ov_mutex);
@@ -556,19 +554,19 @@ static int ville_lcd_on(struct platform_device *pdev)
 			mipi_dsi_cmd_bta_sw_trigger(); /* clean up ack_err_status */
 			if (panel_type == PANEL_ID_VILLE_SAMSUNG_SG) {
 				printk(KERN_INFO "ville_lcd_on PANEL_ID_VILLE_SAMSUNG_SG\n");
-				mipi_dsi_cmds_tx(mfd, &ville_panel_tx_buf, samsung_cmd_on_cmds,
+				mipi_dsi_cmds_tx(&ville_panel_tx_buf, samsung_cmd_on_cmds,
 					ARRAY_SIZE(samsung_cmd_on_cmds));
 			} else if (panel_type == PANEL_ID_VILLE_SAMSUNG_SG_C2) {
 				printk(KERN_INFO "ville_lcd_on PANEL_ID_VILLE_SAMSUNG_SG_C2\n");
-				mipi_dsi_cmds_tx(mfd, &ville_panel_tx_buf, samsung_cmd_on_cmds_c2,
+				mipi_dsi_cmds_tx(&ville_panel_tx_buf, samsung_cmd_on_cmds_c2,
 					ARRAY_SIZE(samsung_cmd_on_cmds));
 			} else if (panel_type == PANEL_ID_VILLE_AUO) {
 				printk(KERN_INFO "ville_lcd_on PANEL_ID_VILLE_AUO\n");
-				mipi_dsi_cmds_tx(mfd, &ville_panel_tx_buf, auo_cmd_on_cmds,
+				mipi_dsi_cmds_tx(&ville_panel_tx_buf, auo_cmd_on_cmds,
 					ARRAY_SIZE(auo_cmd_on_cmds));
 			} else {
 				PR_DISP_ERR("%s: panel_type is not supported!(%d)\n", __func__, panel_type);
-				mipi_dsi_cmds_tx(mfd, &ville_panel_tx_buf, samsung_cmd_on_cmds,
+				mipi_dsi_cmds_tx(&ville_panel_tx_buf, samsung_cmd_on_cmds,
 					ARRAY_SIZE(samsung_cmd_on_cmds));
 			}
 		}
@@ -587,22 +585,20 @@ static void ville_display_on(struct msm_fb_data_type *mfd)
 	mutex_lock(&mfd->dma->ov_mutex);
 
 	if (mfd->panel_info.type == MIPI_CMD_PANEL) {
-		mdp4_dsi_cmd_dma_busy_wait(mfd);
-		mdp4_dsi_blt_dmap_busy_wait(mfd);
 		mipi_dsi_mdp_busy_wait(mfd);
 	}
 
 	if (panel_type == PANEL_ID_VILLE_SAMSUNG_SG || panel_type == PANEL_ID_VILLE_SAMSUNG_SG_C2)
-		mipi_dsi_cmds_tx(mfd, &ville_panel_tx_buf, samsung_display_on_cmds,
+		mipi_dsi_cmds_tx(&ville_panel_tx_buf, samsung_display_on_cmds,
 			ARRAY_SIZE(samsung_display_on_cmds));
 	else if (panel_type == PANEL_ID_VILLE_AUO)
-		mipi_dsi_cmds_tx(mfd, &ville_panel_tx_buf, samsung_display_on_cmds,
+		mipi_dsi_cmds_tx(&ville_panel_tx_buf, samsung_display_on_cmds,
 			ARRAY_SIZE(auo_display_on_cmds));
 
 	cur_bl_level = 0;
 
 	if (acl_enable) {
-		mipi_dsi_cmds_tx(mfd, &ville_panel_tx_buf, samsung_acl_on_cmd,
+		mipi_dsi_cmds_tx(&ville_panel_tx_buf, samsung_acl_on_cmd,
 			ARRAY_SIZE(samsung_acl_on_cmd));
 		acl_enable = 1;
 		PR_DISP_INFO("%s acl enable", __func__);
@@ -629,10 +625,10 @@ static int ville_lcd_off(struct platform_device *pdev)
 	//mutex_lock(&mfd->dma->ov_mutex);
 	*/
 	if (panel_type == PANEL_ID_VILLE_SAMSUNG_SG || panel_type == PANEL_ID_VILLE_SAMSUNG_SG_C2)
-		mipi_dsi_cmds_tx(mfd, &ville_panel_tx_buf, samsung_display_off_cmds,
+		mipi_dsi_cmds_tx(&ville_panel_tx_buf, samsung_display_off_cmds,
 				ARRAY_SIZE(samsung_display_off_cmds));
 	else
-		mipi_dsi_cmds_tx(mfd, &ville_panel_tx_buf, auo_display_off_cmds,
+		mipi_dsi_cmds_tx(&ville_panel_tx_buf, auo_display_off_cmds,
 				ARRAY_SIZE(auo_display_off_cmds));
 	/*
 	//mutex_unlock(&mfd->dma->ov_mutex);
@@ -671,21 +667,19 @@ static int ville_samsung_acl_enable(int on, struct msm_fb_data_type *mfd)
 	last_autobkl_stat = cur_autobkl_stat;
 	mutex_lock(&mfd->dma->ov_mutex);
 	if (mfd->panel_info.type == MIPI_CMD_PANEL) {
-		mdp4_dsi_cmd_dma_busy_wait(mfd);
-		mdp4_dsi_blt_dmap_busy_wait(mfd);
 		mipi_dsi_mdp_busy_wait(mfd);
 	}
 
 	if (cur_autobkl_stat == 8 && !first_time) {
 		if (panel_type == PANEL_ID_VILLE_SAMSUNG_SG || panel_type == PANEL_ID_VILLE_SAMSUNG_SG_C2) {
-			mipi_dsi_cmds_tx(mfd, &ville_panel_tx_buf, samsung_acl_off_cmd,
+			mipi_dsi_cmds_tx(&ville_panel_tx_buf, samsung_acl_off_cmd,
 				ARRAY_SIZE(samsung_acl_off_cmd));
 			acl_enable = 0;
 			PR_DISP_INFO("%s acl disable", __func__);
 		}
 	} else if (cur_autobkl_stat == 12) {
 		if (panel_type == PANEL_ID_VILLE_SAMSUNG_SG || panel_type == PANEL_ID_VILLE_SAMSUNG_SG_C2) {
-			mipi_dsi_cmds_tx(mfd, &ville_panel_tx_buf, samsung_acl_on_cmd,
+			mipi_dsi_cmds_tx(&ville_panel_tx_buf, samsung_acl_on_cmd,
 				ARRAY_SIZE(samsung_acl_on_cmd));
 			acl_enable = 1;
 			PR_DISP_INFO("%s acl enable", __func__);

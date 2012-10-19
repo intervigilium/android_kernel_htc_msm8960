@@ -282,7 +282,9 @@ void mipi_dsi_cmd_bta_sw_trigger(void);
 void mipi_dsi_ack_err_status(void);
 void mipi_dsi_set_tear_on(struct msm_fb_data_type *mfd);
 void mipi_dsi_set_tear_off(struct msm_fb_data_type *mfd);
+#if !defined(CONFIG_MACH_JET) && !defined(CONFIG_MACH_ELITE) && !defined(CONFIG_MACH_VILLE)
 void mipi_dsi_set_backlight(struct msm_fb_data_type *mfd, int level);
+#endif
 void mipi_dsi_cmd_backlight_tx(int level);
 void mipi_dsi_clk_enable(void);
 void mipi_dsi_clk_disable(void);
