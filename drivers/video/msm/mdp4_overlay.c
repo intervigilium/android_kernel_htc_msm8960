@@ -2959,6 +2959,7 @@ int mdp4_overlay_play(struct fb_info *info, struct msmfb_overlay_data *req)
 	if (mfd->request_display_on) {
 		msm_fb_display_on(mfd);
 
+#if 0
 		if (!ignore_bkl_zero) {
 			pr_info("%s: bl_level %d ignore bkl_zero %d\n",
 				__func__, mfd->bl_level, ignore_bkl_zero);
@@ -2966,6 +2967,7 @@ int mdp4_overlay_play(struct fb_info *info, struct msmfb_overlay_data *req)
 				mfd->bl_level = DEFAULT_BRIGHTNESS;
 			ignore_bkl_zero = true;
 		}
+#endif
 
 		if (mfd->bl_level != 0)
 			msm_fb_set_backlight(mfd, mfd->bl_level);
