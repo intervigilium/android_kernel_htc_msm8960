@@ -53,12 +53,6 @@ enum vcd_power_state {
 	VCD_PWR_STATE_SLEEP,
 };
 
-struct vcd_aspect_ratio {
-	u32 aspect_ratio;
-	u32 extended_par_width;
-	u32 extended_par_height;
-};
-
 struct vcd_frame_data {
 	u8 *virtual;
 	u8 *physical;
@@ -77,7 +71,6 @@ struct vcd_frame_data {
 	u8 *desc_buf;
 	u32 desc_size;
 	struct ion_handle *buff_ion_handle;
-	struct vcd_aspect_ratio aspect_ratio_info;
 };
 
 struct vcd_sequence_hdr {

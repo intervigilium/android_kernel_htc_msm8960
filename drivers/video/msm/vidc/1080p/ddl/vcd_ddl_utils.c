@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -24,7 +24,7 @@ struct time_data {
 	unsigned int ddl_count;
 };
 static struct time_data proc_time[MAX_TIME_DATA];
-#define DDL_MSG_TIME(x...) printk(KERN_DEBUG "[VID]" x)
+#define DDL_MSG_TIME(x...) printk(KERN_DEBUG x)
 static unsigned int vidc_mmu_subsystem[] =	{
 		MSM_SUBSYSTEM_VIDEO, MSM_SUBSYSTEM_VIDEO_FWARE};
 
@@ -354,7 +354,6 @@ void ddl_list_buffers(struct ddl_client_context *ddl)
 u32 ddl_fw_init(struct ddl_buf_addr *dram_base)
 {
 	u8 *dest_addr;
-
 	dest_addr = DDL_GET_ALIGNED_VITUAL(*dram_base);
 	DDL_MSG_LOW("FW Addr / FW Size : %x/%d", (u32)vidc_video_codec_fw,
 		vidc_video_codec_fw_size);
@@ -426,17 +425,15 @@ void ddl_set_core_start_time(const char *func_name, u32 index)
 	if (!time_data->ddl_t1) {
 		time_data->ddl_t1 = act_time;
 		DDL_MSG_LOW("\n%s(): Start Time (%u)", func_name, act_time);
-	} else if (vidc_msg_timing) {
+	} else {
 		DDL_MSG_TIME("\n%s(): Timer already started! St(%u) Act(%u)",
 			func_name, time_data->ddl_t1, act_time);
 	}
 }
 
-void ddl_calc_core_proc_time(const char *func_name, u32 index,
-			struct ddl_client_context *ddl)
+void ddl_calc_core_proc_time(const char *func_name, u32 index)
 {
 	struct time_data *time_data = &proc_time[index];
-	struct ddl_decoder_data *decoder = NULL;
 	if (time_data->ddl_t1) {
 		int ddl_t2;
 		struct timeval ddl_tv;
@@ -444,36 +441,6 @@ void ddl_calc_core_proc_time(const char *func_name, u32 index,
 		ddl_t2 = (ddl_tv.tv_sec * 1000) + (ddl_tv.tv_usec / 1000);
 		time_data->ddl_ttotal += (ddl_t2 - time_data->ddl_t1);
 		time_data->ddl_count++;
-		if (vidc_msg_timing) {
-			DDL_MSG_TIME("\n%s(): cnt(%u) End Time (%u)"
-				"Diff(%u) Avg(%u)",
-				func_name, time_data->ddl_count, ddl_t2,
-				ddl_t2 - time_data->ddl_t1,
-				time_data->ddl_ttotal/time_data->ddl_count);
-		}
-		if ((index == DEC_OP_TIME) && (time_data->ddl_count > 2) &&
-					(time_data->ddl_count < 6)) {
-			decoder = &(ddl->codec_data.decoder);
-			decoder->dec_time_sum = decoder->dec_time_sum +
-				ddl_t2 - time_data->ddl_t1;
-			if (time_data->ddl_count == 5)
-				decoder->avg_dec_time =
-					decoder->dec_time_sum / 3;
-		}
-		time_data->ddl_t1 = 0;
-	}
-}
-
-void ddl_calc_core_proc_time_cnt(const char *func_name, u32 index, u32 count)
-{
-	struct time_data *time_data = &proc_time[index];
-	if (time_data->ddl_t1) {
-		int ddl_t2;
-		struct timeval ddl_tv;
-		do_gettimeofday(&ddl_tv);
-		ddl_t2 = (ddl_tv.tv_sec * 1000) + (ddl_tv.tv_usec / 1000);
-		time_data->ddl_ttotal += (ddl_t2 - time_data->ddl_t1);
-		time_data->ddl_count += count;
 		DDL_MSG_TIME("\n%s(): cnt(%u) End Time (%u) Diff(%u) Avg(%u)",
 			func_name, time_data->ddl_count, ddl_t2,
 			ddl_t2 - time_data->ddl_t1,
@@ -482,37 +449,9 @@ void ddl_calc_core_proc_time_cnt(const char *func_name, u32 index, u32 count)
 	}
 }
 
-void ddl_update_core_start_time(const char *func_name, u32 index)
-{
-	u32 act_time;
-	struct timeval ddl_tv;
-	struct time_data *time_data = &proc_time[index];
-	do_gettimeofday(&ddl_tv);
-	act_time = (ddl_tv.tv_sec * 1000) + (ddl_tv.tv_usec / 1000);
-	time_data->ddl_t1 = act_time;
-	DDL_MSG_LOW("\n%s(): Start time updated Act(%u)",
-				func_name, act_time);
-}
-
 void ddl_reset_core_time_variables(u32 index)
 {
 	proc_time[index].ddl_t1 = 0;
 	proc_time[index].ddl_ttotal = 0;
 	proc_time[index].ddl_count = 0;
-}
-
-int ddl_get_core_decode_proc_time(u32 *ddl_handle)
-{
-	int avg_time = 0;
-	struct ddl_client_context *ddl =
-		(struct ddl_client_context *) ddl_handle;
-	avg_time = ddl_vidc_decode_get_avg_time(ddl);
-	return avg_time;
-}
-
-void ddl_reset_avg_dec_time(u32 *ddl_handle)
-{
-	struct ddl_client_context *ddl =
-		(struct ddl_client_context *) ddl_handle;
-	ddl_vidc_decode_reset_avg_time(ddl);
 }
