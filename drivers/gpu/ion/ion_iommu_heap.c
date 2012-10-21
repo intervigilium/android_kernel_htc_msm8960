@@ -35,10 +35,6 @@ struct ion_iommu_priv_data {
 	unsigned long size;
 };
 
-//HTC_START
-atomic_t v = ATOMIC_INIT(0);
-//HTC_END
-
 static int ion_iommu_heap_allocate(struct ion_heap *heap,
 				      struct ion_buffer *buffer,
 				      unsigned long size, unsigned long align,
@@ -71,9 +67,6 @@ static int ion_iommu_heap_allocate(struct ion_heap *heap,
 
 
 		buffer->priv_virt = data;
-		//HTC_START
-		atomic_add(data->size, &v);
-		//HTC_END
 		return 0;
 
 	} else {
@@ -105,18 +98,13 @@ static void ion_iommu_heap_free(struct ion_buffer *buffer)
 
 	kfree(data->pages);
 	kfree(data);
-	//HTC_START
-	atomic_sub(data->size, &v);
-	//HTC_END
 }
 
-//HTC_START
+/* HTC addition */
 int ion_iommu_heap_dump_size(void)
 {
-	int ret = atomic_read(&v);
-	return ret;
+	return 0;
 }
-//HTC_END
 
 void *ion_iommu_heap_map_kernel(struct ion_heap *heap,
 				   struct ion_buffer *buffer,
@@ -183,12 +171,8 @@ int ion_iommu_heap_map_iommu(struct ion_buffer *buffer,
 	unsigned long temp_iova;
 	struct iommu_domain *domain;
 	struct ion_iommu_priv_data *buffer_data = buffer->priv_virt;
-	//HTC_START Jason Huang 20120419
-	//int i, j, ret = 0;
-	int i, ret = 0;
+	int i, j, ret = 0;
 	unsigned long extra;
-	struct scatterlist *sglist = NULL;
-	//HTC_END
 
 	BUG_ON(!msm_use_iommu());
 
@@ -210,25 +194,6 @@ int ion_iommu_heap_map_iommu(struct ion_buffer *buffer,
 		goto out1;
 	}
 
-	//HTC_START Jason Huang 20120419 --- Change to iommu_map_range for performance improvement.
-	sglist = vmalloc(sizeof(*sglist) * buffer_data->nrpages);
-	if (!sglist) {
-		ret = -ENOMEM;
-		goto out1;
-	}
-
-	sg_init_table(sglist, buffer_data->nrpages);
-	for (i = 0; i < buffer_data->nrpages; i++)
-		sg_set_page(&sglist[i], buffer_data->pages[i], PAGE_SIZE, 0);
-
-	ret = iommu_map_range(domain, data->iova_addr, sglist, buffer_data->size, ION_IS_CACHED(flags) ? 1 : 0);
-	if (ret) {
-		ret = -ENOMEM;
-		goto out2;
-	}
-
-	temp_iova = data->iova_addr + buffer_data->size;
-	/*
 	temp_iova = data->iova_addr;
 	for (i = buffer->size, j = 0; i > 0; j++, i -= SZ_4K,
 						temp_iova += SZ_4K) {
@@ -245,35 +210,18 @@ int ion_iommu_heap_map_iommu(struct ion_buffer *buffer,
 			goto out2;
 		}
 	}
-	*/
-	//HTC_END
-
 
 	if (extra &&
 		msm_iommu_map_extra
 			(domain, temp_iova, extra, flags) < 0)
-		//HTC_START
-		//goto out2;
-		goto out3;
-		//HTC_END
+		goto out2;
 
-	//HTC_START
-	vfree(sglist);
-	//HTC_END
 	return 0;
 
 
-//HTC_START Jason Huang 20120419
-//out2:
-out3:
-	iommu_unmap_range(domain, data->iova_addr, buffer_data->size);
-	/*
+out2:
 	for ( ; i < buffer->size; i += SZ_4K, temp_iova -= SZ_4K)
 		iommu_unmap(domain, temp_iova, get_order(SZ_4K));
-	*/
-out2:
-	vfree(sglist);
-//HTC_END
 
 out1:
 	msm_free_iova_address(data->iova_addr, domain_num, partition_num,
@@ -286,10 +234,8 @@ out:
 
 void ion_iommu_heap_unmap_iommu(struct ion_iommu_map *data)
 {
-	//HTC_START Jason Huang 20120419
-	//int i;
-	//unsigned long temp_iova;
-	//HTC_END
+	int i;
+	unsigned long temp_iova;
 	unsigned int domain_num;
 	unsigned int partition_num;
 	struct iommu_domain *domain;
@@ -306,14 +252,9 @@ void ion_iommu_heap_unmap_iommu(struct ion_iommu_map *data)
 		return;
 	}
 
-	//HTC_START Jason Huang 20120419 --- Change to iommu_unmap_range correspondingly.
-	iommu_unmap_range(domain, data->iova_addr, data->mapped_size);
-	/*
 	temp_iova = data->iova_addr;
 	for (i = data->mapped_size; i > 0; i -= SZ_4K, temp_iova += SZ_4K)
 		iommu_unmap(domain, temp_iova, get_order(SZ_4K));
-	*/
-	//HTC_END
 
 	msm_free_iova_address(data->iova_addr, domain_num, partition_num,
 				data->mapped_size);
