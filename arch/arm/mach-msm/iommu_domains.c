@@ -84,28 +84,6 @@ struct {
 		.name = "jpegd_dst",
 		.domain = CAMERA_DOMAIN,
 	},
-/* HTC additions START */
-	/* Display */
-	{
-		.name = "mdp_vg1",
-		.domain = DISPLAY_DOMAIN,
-	},
-	/* Display */
-	{
-		.name = "mdp_vg2",
-		.domain = DISPLAY_DOMAIN,
-	},
-	/* Display */
-	{
-		.name = "mdp_rgb1",
-		.domain = DISPLAY_DOMAIN,
-	},
-	/* Display */
-	{
-		.name = "mdp_rgb2",
-		.domain = DISPLAY_DOMAIN,
-	},
-/* HTC additions END */
 	/* Rotator */
 	{
 		.name = "rot_src",
