@@ -572,13 +572,10 @@ static int ion_cp_heap_map_iommu(struct ion_buffer *buffer,
 				unsigned long iova_length,
 				unsigned long flags)
 {
-	//HTC_START Jason Huang 20120419
-	//HTC_START Jason Huang 20120530 --- Add unsigned long temp_phys and int i back.
 	unsigned long temp_phys, temp_iova;
 	struct iommu_domain *domain;
 	int i = 0, ret = 0;
 	unsigned long extra;
-	//HTC_END
 
 	data->mapped_size = iova_length;
 
@@ -611,37 +608,6 @@ static int ion_cp_heap_map_iommu(struct ion_buffer *buffer,
 		goto out1;
 	}
 
-	//HTC_START Jason Huang 20120419 --- Change to htc_iommu_map_range for performance improvement.
-	/*HTC_START Jason Huang 20120530 --- For buffers from ION CP MM heap, do 1M mapping by iommu_map().
-	                                     Neither htc_iommu_map_range() nor iommu_map_range() supports 1M mapping.*/
-	if (buffer->heap->id == ION_CP_MM_HEAP_ID)
-	{
-		temp_iova = data->iova_addr;
-		temp_phys = buffer->priv_phys;
-		for (i = buffer->size; i > 0; i -= SZ_1M, temp_iova += SZ_1M,
-							  temp_phys += SZ_1M) {
-			ret = iommu_map(domain, temp_iova, temp_phys,
-					get_order(SZ_1M),
-					ION_IS_CACHED(flags) ? 1 : 0);
-
-			if (ret) {
-				pr_err("%s: could not map %lx to %lx in domain %p\n",
-					__func__, temp_iova, temp_phys, domain);
-				goto out2;
-			}
-		}
-	}
-	else
-	{
-		ret = htc_iommu_map_range(domain, data->iova_addr, buffer->priv_phys, buffer->size, ION_IS_CACHED(flags) ? 1 : 0);
-		if (ret) {
-			ret = -ENOMEM;
-			goto out1;
-		}
-
-		temp_iova = data->iova_addr + buffer->size;
-	}
-	/*
 	temp_iova = data->iova_addr;
 	temp_phys = buffer->priv_phys;
 	for (i = buffer->size; i > 0; i -= SZ_4K, temp_iova += SZ_4K,
@@ -656,31 +622,15 @@ static int ion_cp_heap_map_iommu(struct ion_buffer *buffer,
 			goto out2;
 		}
 	}
-	*/
-	//HTC_END
 
 	if (extra && (msm_iommu_map_extra(domain, temp_iova, extra, flags) < 0))
 		goto out2;
 
 	return 0;
 
-//HTC_START Jason Huang 20120419
-//HTC_START Jason Huang 20120530
 out2:
-	if (buffer->heap->id == ION_CP_MM_HEAP_ID)
-	{
-		for ( ; i < buffer->size; i += SZ_1M, temp_iova -= SZ_1M)
-			iommu_unmap(domain, temp_iova, get_order(SZ_1M));
-	}
-	else
-	{
-		iommu_unmap_range(domain, data->iova_addr, buffer->size);
-	}
-	/*
 	for ( ; i < buffer->size; i += SZ_4K, temp_iova -= SZ_4K)
 		iommu_unmap(domain, temp_iova, get_order(SZ_4K));
-	*/
-//HTC_END
 out1:
 	msm_free_iova_address(data->iova_addr, domain_num, partition_num,
 				data->mapped_size);
@@ -690,19 +640,11 @@ out:
 
 static void ion_cp_heap_unmap_iommu(struct ion_iommu_map *data)
 {
-	//HTC_START Jason Huang 20120419
-	//HTC_START Jason Huang 20120530 --- Add int i and unsigned long temp_iova back.
 	int i;
 	unsigned long temp_iova;
-	//HTC_END
 	unsigned int domain_num;
 	unsigned int partition_num;
 	struct iommu_domain *domain;
-	/*HTC_START Jason Huang 20120614 --- In IOMMU map, some client may input larger virtual addresss length (even larger than 1M-aligned buffer),
-	                                     such that the actual mapped size is larger than the buffer size. In IOMMU unmap, the extra part should be
-	                                     un-mapped independently, since it is not 1M mapped.*/
-	unsigned long extra = 0;
-	//HTC_END
 
 	if (!msm_use_iommu())
 		return;
@@ -717,32 +659,9 @@ static void ion_cp_heap_unmap_iommu(struct ion_iommu_map *data)
 		return;
 	}
 
-	//HTC_START Jason Huang 20120419
-	/*HTC_START Jason Huang 20120530 --- For buffers from ION CP MM heap, they are 1M mapping. Un-map by iommu_unmap().
-	                                     iommu_unmap_range() doesn't supports 1M un-mapping.*/
-	if (data->buffer->heap->id == ION_CP_MM_HEAP_ID)
-	{
-		extra = data->mapped_size - data->buffer->size;
-
-		temp_iova = data->iova_addr;
-		for (i = data->buffer->size; i > 0; i -= SZ_1M, temp_iova += SZ_1M)
-			iommu_unmap(domain, temp_iova, get_order(SZ_1M));
-
-		if (extra)
-		{
-			iommu_unmap_range(domain, temp_iova, extra);
-		}
-	}
-	else
-	{
-		iommu_unmap_range(domain, data->iova_addr, data->mapped_size);
-	}
-	/*
 	temp_iova = data->iova_addr;
 	for (i = data->mapped_size; i > 0; i -= SZ_4K, temp_iova += SZ_4K)
 		iommu_unmap(domain, temp_iova, get_order(SZ_4K));
-	*/
-	//HTC_END
 
 	msm_free_iova_address(data->iova_addr, domain_num, partition_num,
 				data->mapped_size);

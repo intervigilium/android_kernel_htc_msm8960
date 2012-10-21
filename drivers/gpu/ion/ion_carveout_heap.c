@@ -273,14 +273,10 @@ int ion_carveout_heap_map_iommu(struct ion_buffer *buffer,
 					unsigned long iova_length,
 					unsigned long flags)
 {
-	//HTC_START Jason Huang 20120424
-	//unsigned long temp_phys, temp_iova;
-	unsigned long temp_iova;
+	unsigned long temp_phys, temp_iova;
 	struct iommu_domain *domain;
-	//int i, ret = 0;
-	int ret = 0;
+	int i, ret = 0;
 	unsigned long extra;
-	//HTC_END
 
 	data->mapped_size = iova_length;
 
@@ -306,15 +302,6 @@ int ion_carveout_heap_map_iommu(struct ion_buffer *buffer,
 		goto out1;
 	}
 
-	//HTC_START Jason Huang 20120424 --- Change to htc_iommu_map_range for performance improvement.
-	ret = htc_iommu_map_range(domain, data->iova_addr, buffer->priv_phys, buffer->size, ION_IS_CACHED(flags) ? 1 : 0);
-	if (ret) {
-		ret = -ENOMEM;
-		goto out1;
-	}
-
-	temp_iova = data->iova_addr + buffer->size;
-	/*
 	temp_iova = data->iova_addr;
 	temp_phys = buffer->priv_phys;
 	for (i = buffer->size; i > 0; i -= SZ_4K, temp_iova += SZ_4K,
@@ -329,8 +316,6 @@ int ion_carveout_heap_map_iommu(struct ion_buffer *buffer,
 			goto out2;
 		}
 	}
-	*/
-	//HTC_END
 
 	if (extra && (msm_iommu_map_extra(domain, temp_iova, extra, flags) < 0))
 		goto out2;
@@ -338,15 +323,10 @@ int ion_carveout_heap_map_iommu(struct ion_buffer *buffer,
 	return 0;
 
 
-//HTC_START Jason Huang 20120424
 out2:
-	iommu_unmap_range(domain, data->iova_addr, buffer->size);
-	/*
 	for ( ; i < buffer->size; i += SZ_4K, temp_iova -= SZ_4K)
 		iommu_unmap(domain, temp_iova, get_order(SZ_4K));
 
-	*/
-//HTC_END
 out1:
 	msm_free_iova_address(data->iova_addr, domain_num, partition_num,
 				data->mapped_size);
@@ -358,10 +338,8 @@ out:
 
 void ion_carveout_heap_unmap_iommu(struct ion_iommu_map *data)
 {
-	//HTC_START Jason Huang 20120424
-	//int i;
-	//unsigned long temp_iova;
-	//HTC_END
+	int i;
+	unsigned long temp_iova;
 	unsigned int domain_num;
 	unsigned int partition_num;
 	struct iommu_domain *domain;
@@ -379,14 +357,9 @@ void ion_carveout_heap_unmap_iommu(struct ion_iommu_map *data)
 		return;
 	}
 
-	//HTC_START Jason Huang 20120424
-	iommu_unmap_range(domain, data->iova_addr, data->mapped_size);
-	/*
 	temp_iova = data->iova_addr;
 	for (i = data->mapped_size; i > 0; i -= SZ_4K, temp_iova += SZ_4K)
 		iommu_unmap(domain, temp_iova, get_order(SZ_4K));
-	*/
-	//HTC_END
 
 	msm_free_iova_address(data->iova_addr, domain_num, partition_num,
 				data->mapped_size);
