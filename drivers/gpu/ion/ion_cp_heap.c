@@ -586,13 +586,6 @@ static int ion_cp_heap_map_iommu(struct ion_buffer *buffer,
 
 	extra = iova_length - buffer->size;
 
-	//HTC_START Jason Huang 20120530 --- For buffers from ION CP MM heap, always 1M-alignment.
-	if (buffer->heap->id == ION_CP_MM_HEAP_ID)
-	{
-		align = SZ_1M;
-	}
-	//HTC_END
-
 	data->iova_addr = msm_allocate_iova_address(domain_num, partition_num,
 						data->mapped_size, align);
 
