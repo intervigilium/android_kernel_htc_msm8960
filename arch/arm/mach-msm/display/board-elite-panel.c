@@ -2773,8 +2773,6 @@ static int __init mipi_video_himax_720p_pt_init(void)
 	pinfo.pdest = DISPLAY_1;
 	pinfo.wait_cycle = 0;
 	pinfo.bpp = 24;
-	pinfo.width = 58;
-	pinfo.height = 103;
 
 	pinfo.lcdc.h_back_porch = 116;
 	pinfo.lcdc.h_front_porch = 62;
@@ -2903,8 +2901,6 @@ static int __init mipi_video_sharp_nt_720p_pt_init(void)
 	pinfo.pdest = DISPLAY_1;
 	pinfo.wait_cycle = 0;
 	pinfo.bpp = 24;
-	pinfo.width = 58;
-	pinfo.height = 103;
 
 	pinfo.lcdc.h_back_porch = 125;
 	pinfo.lcdc.h_front_porch = 122;
