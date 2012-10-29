@@ -802,7 +802,7 @@ static void __init elite_reserve(void)
 {
 	msm_reserve();
 	fmem_pdata.align = PAGE_SIZE;
-	fmem_pdata.phys = reserve_memory_for_fmee(fmem_pdata.size, fmem_pdata.align);
+	fmem_pdata.phys = reserve_memory_for_fmem(fmem_pdata.size, fmem_pdata.align);
 }
 static int msm8960_change_memory_power(u64 start, u64 size,
 	int change_type)
@@ -846,7 +846,6 @@ int set_two_phase_freq(int cpufreq);
 
 #define MDP_VSYNC_GPIO 0
 
-#define PANEL_NAME_MAX_LEN	30
 #define MIPI_CMD_NOVATEK_QHD_PANEL_NAME	"mipi_cmd_novatek_qhd"
 #define MIPI_VIDEO_NOVATEK_QHD_PANEL_NAME	"mipi_video_novatek_qhd"
 #define MIPI_VIDEO_TOSHIBA_WSVGA_PANEL_NAME	"mipi_video_toshiba_wsvga"
