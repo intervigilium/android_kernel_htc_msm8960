@@ -3746,6 +3746,7 @@ static struct msm_panel_common_pdata mdp_pdata = {
 #endif
 	/*.mdp_color_enhance = elite_mdp_color_enhance,*/
 	.mdp_gamma = elite_mdp_gamma,
+	.cont_splash_enabled = 0x0,
 };
 
 void __init msm8960_mdp_writeback(struct memtype_reserve* reserve_table)
