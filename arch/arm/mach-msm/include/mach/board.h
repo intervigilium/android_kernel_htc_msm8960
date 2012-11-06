@@ -387,8 +387,6 @@ struct msm_panel_common_pdata {
 	int (*vga_switch)(int select_vga);
 	int *gpio_num;
 	u32 mdp_max_clk;
-	int (*rgb_format)(void);
-	unsigned char (*shrink_pwm)(int val);
 #ifdef CONFIG_MSM_BUS_SCALING
 	struct msm_bus_scale_pdata *mdp_bus_scale_table;
 #endif
@@ -399,6 +397,8 @@ struct msm_panel_common_pdata {
 	char cont_splash_enabled;
 	char mdp_iommu_split_domain;
 	/* HTC additions */
+	int (*rgb_format)(void);
+	unsigned char (*shrink_pwm)(int val);
 	int (*writeback_offset)(void);
 	int (*mdp_color_enhance)(void);
 	int (*mdp_gamma)(void);
