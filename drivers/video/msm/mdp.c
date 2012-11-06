@@ -562,7 +562,7 @@ error:
 }
 
 DEFINE_MUTEX(mdp_lut_push_sem);
-static int mdp_lut_i;
+int mdp_lut_i;
 static int mdp_lut_hw_update(struct fb_cmap *cmap)
 {
 	int i;
@@ -593,8 +593,8 @@ static int mdp_lut_hw_update(struct fb_cmap *cmap)
 	return 0;
 }
 
-static int mdp_lut_push;
-static int mdp_lut_push_i;
+int mdp_lut_push;
+int mdp_lut_push_i;
 static int mdp_lut_update_nonlcdc(struct fb_info *info, struct fb_cmap *cmap)
 {
 	int ret;
@@ -2705,7 +2705,6 @@ static int mdp_probe(struct platform_device *pdev)
 #ifndef CONFIG_FB_MSM_MDP303
 		mfd->dma_fnc = mdp4_dsi_cmd_overlay;
 		mipi = &mfd->panel_info.mipi;
-		configure_mdp_core_clk_table((mipi->dsi_pclk_rate) * 3 / 2);
 
 		mdp4_dsi_rdptr_init(0);
 		if (mfd->panel_info.pdest == DISPLAY_1) {
