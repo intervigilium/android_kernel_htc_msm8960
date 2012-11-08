@@ -197,7 +197,7 @@ int videobuf2_pmem_contig_user_get(struct videobuf2_contig_pmem *mem,
 	rc = ion_handle_get_flags(client, mem->ion_handle, &mem->ion_flags);
 	mem->kernel_vaddr = ion_map_kernel(client,
 		mem->ion_handle, mem->ion_flags);
-#elif CONFIG_ANDROID_PMEM
+#elif defined(CONFIG_ANDROID_PMEM)
 	rc = get_pmem_file((int)mem->vaddr, (unsigned long *)&mem->phyaddr,
 					&kvstart, &len, &mem->file);
 	if (rc < 0) {
@@ -231,7 +231,7 @@ void videobuf2_pmem_contig_user_put(struct videobuf2_contig_pmem *mem,
 		ion_unmap_iommu(client, mem->ion_handle,
 				CAMERA_DOMAIN, GEN_POOL);
 		ion_free(client, mem->ion_handle);
-#elif CONFIG_ANDROID_PMEM
+#elif defined(CONFIG_ANDROID_PMEM)
 		put_pmem_file(mem->file);
 #endif
 	}

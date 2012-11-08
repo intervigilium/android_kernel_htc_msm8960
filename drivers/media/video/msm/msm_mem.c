@@ -145,7 +145,7 @@ static int msm_pmem_table_add(struct hlist_head *ptype,
 	if (ion_map_iommu(client, region->handle, CAMERA_DOMAIN, GEN_POOL,
 				  SZ_4K, 0, &paddr, &len, UNCACHED, 0) < 0)
 		goto out2;
-#elif CONFIG_ANDROID_PMEM
+#elif defined(CONFIG_ANDROID_PMEM)
 	rc = get_pmem_file(info->fd, &paddr, &kvstart, &len, &file);
 	if (rc < 0) {
 		pr_err("%s: get_pmem_file fd %d error %d\n",
@@ -160,9 +160,11 @@ static int msm_pmem_table_add(struct hlist_head *ptype,
 #endif
 	if (!info->len)
 		info->len = len;
+#ifdef CONFIG_ANDROID_PMEM
 	rc = check_pmem_info(info, len);
 	if (rc < 0)
 		goto out3;
+#endif
 	paddr += info->offset;
 	len = info->len;
 
@@ -192,7 +194,7 @@ out3:
 out2:
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
 	ion_free(client, region->handle);
-#elif CONFIG_ANDROID_PMEM
+#elif defined(CONFIG_ANDROID_PMEM)
 	put_pmem_file(region->file);
 #endif
 out1:
