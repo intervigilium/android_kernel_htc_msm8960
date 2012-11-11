@@ -43,7 +43,7 @@ static int ion_iommu_heap_allocate(struct ion_heap *heap,
 				      unsigned long size, unsigned long align,
 				      unsigned long flags)
 {
-	int i, ret = -ENOMEM;
+	int ret, i;
 	struct ion_iommu_priv_data *data = NULL;
 
 	if (msm_use_iommu()) {
@@ -116,12 +116,6 @@ static void ion_iommu_heap_free(struct ion_buffer *buffer)
 
 	kfree(data->pages);
 	kfree(data);
-}
-
-/* HTC addition */
-int ion_iommu_heap_dump_size(void)
-{
-	return 0;
 }
 
 void *ion_iommu_heap_map_kernel(struct ion_heap *heap,
