@@ -21,6 +21,12 @@ void __attribute__((weak)) arch_report_meminfo(struct seq_file *m)
 {
 }
 
+/* HTC addition */
+static unsigned long kgsl_get_alloc_size(void)
+{
+	return 0;
+}
+
 void show_meminfo(void)
 {
 	struct sysinfo i;
