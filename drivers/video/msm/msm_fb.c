@@ -242,7 +242,11 @@ static struct led_classdev backlight_led = {
 #endif
 
 static struct msm_fb_platform_data *msm_fb_pdata;
-unsigned char hdmi_prim_display;
+#ifdef CONFIG_FB_MSM_HDMI_AS_PRIMARY
+unsigned char hdmi_prim_display = 0x1;
+#else
+unsigned char hdmi_prim_display = 0x0;
+#endif
 
 int msm_fb_detect_client(const char *name)
 {
