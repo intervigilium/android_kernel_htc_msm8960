@@ -21,11 +21,17 @@ void __attribute__((weak)) arch_report_meminfo(struct seq_file *m)
 {
 }
 
-/* HTC addition */
+/* HTC additions */
 static unsigned long kgsl_get_alloc_size(void)
 {
 	return 0;
 }
+
+static unsigned long ion_iommu_heap_dump_size(void)
+{
+	return 0;
+}
+/* HTC additions */
 
 void show_meminfo(void)
 {

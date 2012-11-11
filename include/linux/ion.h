@@ -536,9 +536,6 @@ int msm_ion_unsecure_heap(int heap_id);
 int msm_ion_do_cache_op(struct ion_client *client, struct ion_handle *handle,
 			void *vaddr, unsigned long len, unsigned int cmd);
 
-//HTC_START
-int ion_iommu_heap_dump_size(void);
-//HTC_END
 #else
 static inline struct ion_client *ion_client_create(struct ion_device *dev,
 				     unsigned int heap_mask, const char *name)
