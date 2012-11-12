@@ -1602,6 +1602,11 @@ static struct platform_driver wfd_driver = {
 
 static int __init wfd_init(void)
 {
+	return 0;
+}
+
+static int __init wfd_late_init(void)
+{
 	int rc = 0;
 	WFD_MSG_DBG("Calling init function of wfd driver\n");
 	rc = platform_driver_register(&wfd_driver);
@@ -1620,4 +1625,5 @@ static void __exit wfd_exit(void)
 }
 
 module_init(wfd_init);
+late_initcall(wfd_late_init);
 module_exit(wfd_exit);

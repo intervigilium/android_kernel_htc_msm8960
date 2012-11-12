@@ -93,6 +93,11 @@ static struct platform_driver writeback_driver = {
 
 static int __init writeback_driver_init(void)
 {
+	return 0;
+}
+
+static int __init writeback_driver_late_init(void)
+{
 	int rc = 0;
 	WRITEBACK_MSG_ERR("Inside writeback_driver_init\n");
 	rc = platform_driver_register(&writeback_driver);
@@ -100,3 +105,4 @@ static int __init writeback_driver_init(void)
 }
 
 module_init(writeback_driver_init);
+late_initcall(writeback_driver_late_init);

@@ -61,6 +61,11 @@ static struct platform_driver writeback_panel_driver = {
 
 static int __init writeback_panel_init(void)
 {
+	return 0;
+}
+
+static int __init writeback_panel_late_init(void)
+{
 	int rc = 0;
 	rc = platform_driver_register(&writeback_panel_driver);
 	if (rc) {
@@ -81,3 +86,4 @@ fail_driver_registration:
 }
 
 module_init(writeback_panel_init);
+late_initcall(writeback_panel_late_init);
