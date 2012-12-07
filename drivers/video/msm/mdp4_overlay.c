@@ -3552,7 +3552,6 @@ mddi:
 
 	/* HTC addition */
 	if (mfd->request_display_on) {
-		msm_fb_display_on(mfd);
 
 #if 0
 		if (!ignore_bkl_zero) {

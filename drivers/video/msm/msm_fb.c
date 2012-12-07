@@ -886,24 +886,6 @@ void msm_fb_set_backlight(struct msm_fb_data_type *mfd, __u32 bkl_lvl)
 	}
 }
 
-/* HTC addition */
-void msm_fb_display_on(struct msm_fb_data_type *mfd)
-{
-	struct msm_fb_panel_data *pdata;
-	pdata = (struct msm_fb_panel_data *) mfd->pdev->dev.platform_data;
-
-	if (pdata && pdata->display_on) {
-		down(&mfd->sem);
-		pdata->display_on(mfd);
-#ifdef CONFIG_FB_MSM_CABC
-		if (pdata && pdata->enable_cabc)
-			mod_timer(&mfd->cabc_update_timer,
-					jiffies + msecs_to_jiffies(100));
-#endif
-	}
-}
-/* HTC end */
-
 static int msm_fb_blank_sub(int blank_mode, struct fb_info *info,
 			    boolean op_enable)
 {

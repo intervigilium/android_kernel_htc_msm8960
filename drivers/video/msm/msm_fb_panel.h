@@ -187,7 +187,6 @@ struct msm_fb_panel_data {
 	int (*clk_func) (int enable);
 
 	/* HTC addition */
-	void (*display_on) (struct msm_fb_data_type *);
 #ifdef CONFIG_FB_MSM_CABC
 	void (*enable_cabc) (int, bool, struct msm_fb_data_type *);
 #endif
