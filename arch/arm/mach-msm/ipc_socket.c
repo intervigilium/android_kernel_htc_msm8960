@@ -354,7 +354,11 @@ static int msm_ipc_router_ioctl(struct socket *sock,
 	struct sock *sk = sock->sk;
 	struct msm_ipc_port *port_ptr;
 	struct server_lookup_args server_arg;
+#ifdef CONFIG_MACH_HTC
+	struct msm_ipc_port_addr *srv_info = NULL;
+#else
 	struct msm_ipc_server_info *srv_info = NULL;
+#endif
 	unsigned int n, srv_info_sz = 0;
 	int ret;
 
