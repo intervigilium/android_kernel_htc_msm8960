@@ -80,8 +80,8 @@
 #include <mach/scm.h>
 #include <mach/iommu_domains.h>
 
+#include <mach/kgsl.h>
 #include <linux/fmem.h>
-#include <linux/msm_kgsl.h>
 
 #include <linux/mpu.h>
 #include <linux/r3gd20.h>
@@ -2401,11 +2401,16 @@ static struct platform_device cable_detect_device = {
 	},
 };
 
+static void jet_cable_detect_register(void)
+{
+	pr_info("%s\n", __func__);
+	platform_device_register(&cable_detect_device);
+}
+
 void jet_pm8xxx_adc_device_register(void)
 {
 	pr_info("%s: Register PM8921 ADC device\n", __func__);
 	headset_device_register();
-	platform_device_register(&cable_detect_device);
 }
 
 #define MSM_SHARED_RAM_PHYS 0x80000000
@@ -2414,6 +2419,7 @@ static void __init jet_map_io(void)
 {
 	msm_shared_ram_phys = MSM_SHARED_RAM_PHYS;
 	msm_map_msm8960_io();
+
 	if (socinfo_init() < 0)
 		pr_err("socinfo_init() failed!\n");
 }
@@ -3553,7 +3559,7 @@ static void __init register_i2c_devices(void)
 {
 #ifdef CONFIG_I2C
 	u8 mach_mask = 0;
-	int i;
+	int i, rc;
 
 #ifdef CONFIG_MSM_CAMERA
 	struct i2c_registry jet_camera_i2c_devices = {
@@ -3575,6 +3581,21 @@ static void __init register_i2c_devices(void)
 		}
 	}
 
+	if ((system_rev < 1 && engineerid == 0) || (system_rev >= 1 && engineerid == 1)) {
+		if (board_mfg_mode() == 1) {
+			for (i = 0; i < ARRAY_SIZE(evita_syn_ts_3k_data); i++)
+				evita_syn_ts_3k_data[i].mfg_flag = 1;
+		}
+		for (rc = 0; rc < ARRAY_SIZE(msm_i2c_gsbi3_info); rc++) {
+			if (!strcmp(msm_i2c_gsbi3_info[rc].type, SYNAPTICS_3200_NAME))
+				msm_i2c_gsbi3_info[rc].platform_data = &evita_syn_ts_3k_data;
+		}
+	} else {
+		if (board_mfg_mode() == 1) {
+			for (i = 0; i < ARRAY_SIZE(syn_ts_3k_data);  i++)
+				syn_ts_3k_data[i].mfg_flag = 1;
+		}
+	}
 #ifdef CONFIG_MSM_CAMERA
 	/* HTC_START_Simon.Ti_Liu_20120711_IMPLEMENT_MCLK_SWITCH */
 	if (jet_camera_i2c_devices.machs & mach_mask)
@@ -3629,7 +3650,7 @@ static struct spi_board_info rawchip_spi_board_info[] __initdata = {
 
 static void __init jet_init(void)
 {
-	int rc = 0, i = 0;
+	int rc = 0;
 	u32 hw_ver_id = 0;
 	struct kobject *properties_kobj;
 
@@ -3641,34 +3662,32 @@ static void __init jet_init(void)
 
 	msm_tsens_early_init(&msm_tsens_pdata);
 	msm_thermal_init(&msm_thermal_pdata);
-	if (socinfo_init() < 0)
-		pr_err("socinfo_init() failed!\n");
-
 	BUG_ON(msm_rpm_init(&msm8960_rpm_data));
 	BUG_ON(msm_rpmrs_levels_init(&msm_rpmrs_data));
 
 	regulator_suppress_info_printing();
-	platform_device_register(&jet_device_rpm_regulator);
-
 	if (msm_xo_init())
 		pr_err("Failed to initialize XO votes\n");
+	platform_device_register(&jet_device_rpm_regulator);
 	msm_clock_init(&msm8960_clock_init_data);
-
-	jet_gpiomux_init();
-
-	msm8960_i2c_init();
-
-	jet_init_pmic();
-	android_usb_pdata.swfi_latency = msm_rpmrs_levels[0].latency_us;
-
 	msm8960_device_otg.dev.platform_data = &msm_otg_pdata;
+	android_usb_pdata.swfi_latency =
+		msm_rpmrs_levels[0].latency_us;
+	jet_gpiomux_init();
 	msm8960_device_qup_spi_gsbi10.dev.platform_data =
 		&msm8960_qup_spi_gsbi10_pdata;
 #ifdef CONFIG_RAWCHIP
 	spi_register_board_info(rawchip_spi_board_info,
 			ARRAY_SIZE(rawchip_spi_board_info));
 #endif
+	jet_init_pmic();
+	msm8960_i2c_init();
+	msm8960_gfx_init();
 
+	jet_cable_detect_register();
+
+	msm_spm_init(msm_spm_data, ARRAY_SIZE(msm_spm_data));
+	msm_spm_l2_init(msm_spm_l2_data);
 	msm8960_init_buses();
 
 #ifdef CONFIG_BT
@@ -3677,41 +3696,24 @@ static void __init jet_init(void)
 #ifdef CONFIG_HTC_BATT_8960
 	htc_battery_cell_init(htc_battery_cells, ARRAY_SIZE(htc_battery_cells));
 #endif /* CONFIG_HTC_BATT_8960 */
+
 	platform_add_devices(msm8960_footswitch, msm8960_num_footswitch);
 	platform_device_register(&msm8960_device_ext_l2_vreg);
+
 	platform_add_devices(common_devices, ARRAY_SIZE(common_devices));
-	jet_pm8921_gpio_mpp_init();
+
 	msm_uart_gsbi_gpio_init();
+	jet_pm8921_gpio_mpp_init();
 	msm_region_id_gpio_init();
 	platform_add_devices(jet_devices, ARRAY_SIZE(jet_devices));
-#ifdef CONFIG_MSM_CAMERA
 	jet_init_camera();
-#endif
 	jet_init_mmc();
-//	acpuclk_init(&acpuclk_8960_soc_data);
-	if ((system_rev < 1 && engineerid == 0) || (system_rev >= 1 && engineerid == 1)) {
-		if (board_mfg_mode() == 1) {
-			for (i = 0; i < ARRAY_SIZE(evita_syn_ts_3k_data); i++)
-				evita_syn_ts_3k_data[i].mfg_flag = 1;
-		}
-		for (rc = 0; rc < ARRAY_SIZE(msm_i2c_gsbi3_info); rc++) {
-			if (!strcmp(msm_i2c_gsbi3_info[rc].type, SYNAPTICS_3200_NAME))
-				msm_i2c_gsbi3_info[rc].platform_data = &evita_syn_ts_3k_data;
-		}
-	} else {
-		if (board_mfg_mode() == 1) {
-			for (i = 0; i < ARRAY_SIZE(syn_ts_3k_data);  i++)
-				syn_ts_3k_data[i].mfg_flag = 1;
-		}
-	}
 	register_i2c_devices();
-	/* msm8960_wcnss_init(); */
 	jet_init_fb();
-	msm8960_gfx_init();
-//	msm_fb_add_devices();
 	slim_register_board_info(msm_slim_devices,
 			ARRAY_SIZE(msm_slim_devices));
-	/* msm8960_init_dsps(); */
+	BUG_ON(msm_pm_boot_init(&msm_pm_boot_pdata));
+
 //	msm_pm_set_rpm_wakeup_irq(RPM_APCC_CPU0_WAKE_UP_IRQ);
 
 	/*usb driver won't be loaded in MFG 58 station and gift mode*/
@@ -3727,9 +3729,6 @@ static void __init jet_init(void)
 	}
 
 	jet_init_keypad();
-	msm_spm_init(msm_spm_data, ARRAY_SIZE(msm_spm_data));
-	msm_spm_l2_init(msm_spm_l2_data);
-	BUG_ON(msm_pm_boot_init(&msm_pm_boot_pdata));
 	hw_ver_id = readl(HW_VER_ID_VIRT);
 	printk(KERN_INFO "hw_ver_id = %x\n", hw_ver_id);
 }
