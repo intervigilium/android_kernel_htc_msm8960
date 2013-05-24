@@ -26,7 +26,6 @@
 #include <linux/spi/spi.h>
 #include <linux/slimbus/slimbus.h>
 #include <linux/bootmem.h>
-#include <linux/msm_kgsl.h>
 #ifdef CONFIG_ANDROID_PMEM
 #include <linux/android_pmem.h>
 #endif
@@ -81,7 +80,7 @@
 #include <mach/scm.h>
 #include <mach/iommu_domains.h>
 
-#include <linux/msm_kgsl.h>
+#include <mach/kgsl.h>
 #include <linux/fmem.h>
 
 #include <linux/mpu.h>
@@ -2635,11 +2634,15 @@ static struct platform_device cable_detect_device = {
 	},
 };
 
+static void elite_cable_detect_register(void) {
+	pr_info("%s\n", __func__);
+	platform_device_register(&cable_detect_device);
+}
+
 void elite_pm8xxx_adc_device_register(void)
 {
 	pr_info("%s: Register PM8921 ADC device\n", __func__);
 	headset_device_register();
-	platform_device_register(&cable_detect_device);
 }
 
 #define MSM_SHARED_RAM_PHYS 0x80000000
@@ -3789,7 +3792,7 @@ static void __init register_i2c_devices(void)
 {
 #ifdef CONFIG_I2C
 	u8 mach_mask = 0;
-	int i;
+	int i, rc;
 
 #ifdef CONFIG_MSM_CAMERA
 	struct i2c_registry elite_camera_i2c_devices = {
@@ -3811,6 +3814,17 @@ static void __init register_i2c_devices(void)
 		}
 	}
 
+	if ((engineerid & 0x03) == 1) {
+		for (rc = 0; rc < ARRAY_SIZE(msm_i2c_gsbi3_info); rc++) {
+			if (!strcmp(msm_i2c_gsbi3_info[rc].type, SYNAPTICS_3200_NAME))
+				msm_i2c_gsbi3_info[rc].platform_data = &syn_ts_3k_2p5D_7070_data;
+		}
+	} else if ((engineerid & 0x03) == 2) {
+		for (rc = 0; rc < ARRAY_SIZE(msm_i2c_gsbi3_info); rc++) {
+			if (!strcmp(msm_i2c_gsbi3_info[rc].type, SYNAPTICS_3200_NAME))
+				msm_i2c_gsbi3_info[rc].platform_data = &syn_ts_3k_2p5D_3030_data;
+		}
+	}
 #ifdef CONFIG_MSM_CAMERA
 	/* HTC_START_Simon.Ti_Liu_20120711_IMPLEMENT_MCLK_SWITCH */
 	if (elite_camera_i2c_devices.machs & mach_mask)
@@ -3886,81 +3900,66 @@ static void __init elite_init(void)
 
 	htc_add_ramconsole_devices();
 	platform_device_register(&msm_gpio_device);
+
 	msm_tsens_early_init(&msm_tsens_pdata);
 	msm_thermal_init(&msm_thermal_pdata);
-	if (socinfo_init() < 0)
-		pr_err("socinfo_init() failed!\n");
 	BUG_ON(msm_rpm_init(&msm8960_rpm_data));
 	BUG_ON(msm_rpmrs_levels_init(&msm_rpmrs_data));
-//	msm_rpmrs_lpm_init(1, 1, 1, 1);
 
 	regulator_suppress_info_printing();
-	platform_device_register(&elite_device_rpm_regulator);
 	if (msm_xo_init())
 		pr_err("Failed to initialize XO votes\n");
+	platform_device_register(&elite_device_rpm_regulator);
 	msm_clock_init(&msm8960_clock_init_data);
-	elite_gpiomux_init();
-	msm8960_i2c_init();
-	elite_init_pmic();
-	android_usb_pdata.swfi_latency = msm_rpmrs_levels[0].latency_us;
 	msm8960_device_otg.dev.platform_data = &msm_otg_pdata;
+	android_usb_pdata.swfi_latency = msm_rpmrs_levels[0].latency_us;
+	elite_gpiomux_init();
 	msm8960_device_qup_spi_gsbi10.dev.platform_data =
 		&msm8960_qup_spi_gsbi10_pdata;
 #ifdef CONFIG_RAWCHIP
 	spi_register_board_info(rawchip_spi_board_info,
 			ARRAY_SIZE(rawchip_spi_board_info));
 #endif
+	elite_init_pmic();
+	msm8960_i2c_init();
+	msm8960_gfx_init();
+
+	elite_cable_detect_register();
+
+	msm_spm_init(msm_spm_data, ARRAY_SIZE(msm_spm_data));
+	msm_spm_l2_init(msm_spm_l2_data);
 	msm8960_init_buses();
+
 #ifdef CONFIG_BT
 	bt_export_bd_address();
 #endif
 #ifdef CONFIG_HTC_BATT_8960
 	htc_battery_cell_init(htc_battery_cells, ARRAY_SIZE(htc_battery_cells));
 #endif /* CONFIG_HTC_BATT_8960 */
+
 	platform_add_devices(msm8960_footswitch, msm8960_num_footswitch);
 	platform_device_register(&msm8960_device_ext_l2_vreg);
+
 	platform_add_devices(common_devices, ARRAY_SIZE(common_devices));
-	elite_pm8921_gpio_mpp_init();
+
 	msm_uart_gsbi_gpio_init();
+	elite_pm8921_gpio_mpp_init();
 	msm_region_id_gpio_init();
 	platform_add_devices(elite_devices, ARRAY_SIZE(elite_devices));
-#ifdef CONFIG_MSM_CAMERA
 	elite_init_camera();
-#endif
 	elite_init_mmc();
-//	acpuclk_init(&acpuclk_8960_soc_data);
-	if ((engineerid & 0x03) == 1) {
-		for (rc = 0; rc < ARRAY_SIZE(msm_i2c_gsbi3_info); rc++) {
-			if (!strcmp(msm_i2c_gsbi3_info[rc].type, SYNAPTICS_3200_NAME))
-				msm_i2c_gsbi3_info[rc].platform_data = &syn_ts_3k_2p5D_7070_data;
-		}
-	} else if ((engineerid & 0x03) == 2) {
-		for (rc = 0; rc < ARRAY_SIZE(msm_i2c_gsbi3_info); rc++) {
-			if (!strcmp(msm_i2c_gsbi3_info[rc].type, SYNAPTICS_3200_NAME))
-				msm_i2c_gsbi3_info[rc].platform_data = &syn_ts_3k_2p5D_3030_data;
-		}
-	}
-
 	register_i2c_devices();
-	/* msm8960_wcnss_init(); */
 	elite_init_fb();
 	msm8960_gfx_init();
-//	msm_fb_add_devices();
 	slim_register_board_info(msm_slim_devices,
 			ARRAY_SIZE(msm_slim_devices));
-	/* msm8960_init_dsps(); */
-//	msm_pm_set_rpm_wakeup_irq(RPM_APCC_CPU0_WAKE_UP_IRQ);
+	BUG_ON(msm_pm_boot_init(&msm_pm_boot_pdata));
 
-#ifdef CONFIG_PERFLOCK
-//	perflock_init(&elite_perflock_data);
-//	cpufreq_ceiling_init(&elite_cpufreq_ceiling_data);
-#endif
+//	msm_pm_set_rpm_wakeup_irq(RPM_APCC_CPU0_WAKE_UP_IRQ);
 
 	/*usb driver won't be loaded in MFG 58 station and gift mode*/
 	if (!(board_mfg_mode() == 6 || board_mfg_mode() == 7))
 		elite_add_usb_devices();
-
-	elite_init_keypad();
 
 	properties_kobj = kobject_create_and_add("board_properties", NULL);
 	if (properties_kobj) {
@@ -3969,10 +3968,13 @@ static void __init elite_init(void)
 		else
 			rc = sysfs_create_group(properties_kobj, &three_virtual_key_properties_attr_group);
 	}
-	msm_spm_init(msm_spm_data, ARRAY_SIZE(msm_spm_data));
-	msm_spm_l2_init(msm_spm_l2_data);
-	BUG_ON(msm_pm_boot_init(&msm_pm_boot_pdata));
-//	msm_pm_init_sleep_status_data(&msm_pm_slp_sts_data);
+
+#ifdef CONFIG_PERFLOCK
+	perflock_init(&elite_perflock_data);
+	cpufreq_ceiling_init(&elite_cpufreq_ceiling_data);
+#endif
+
+	elite_init_keypad();
 	hw_ver_id = readl(HW_VER_ID_VIRT);
 	printk(KERN_INFO "hw_ver_id = %x\n", hw_ver_id);
 }

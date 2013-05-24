@@ -28,6 +28,8 @@
 #ifdef CONFIG_MSM_CAMERA_FLASH
 #include <linux/htc_flashlight.h>
 #endif
+
+#ifdef CONFIG_MSM_CAMERA
 #define MSM_8960_GSBI4_QUP_I2C_BUS_ID 4	
 static struct platform_device msm_camera_server = {
 	.name = "msm_cam_server",
@@ -107,7 +109,6 @@ static struct gpiomux_setting cam_settings[11] = {
 		.pull = GPIOMUX_PULL_NONE,
 		.dir = GPIOMUX_OUT_LOW,
 	},
-
 };
 
 static struct msm_gpiomux_config elite_cam_configs[] = {
@@ -184,7 +185,6 @@ static struct msm_gpiomux_config elite_cam_configs[] = {
 	},
 };
 
-#ifdef CONFIG_MSM_CAMERA
 static struct msm_bus_vectors cam_init_vectors[] = {
 	{
 		.src = MSM_BUS_MASTER_VFE,
@@ -362,12 +362,12 @@ pr_info("%s, linear led, mode=%d", __func__, mode);
 #endif
 }
 
-
 static struct msm_camera_sensor_flash_src msm_flash_src = {
 	.flash_sr_type = MSM_CAMERA_FLASH_SRC_CURRENT_DRIVER,
 	.camera_flash = flashlight_control,
 };
-#endif
+#endif /* CONFIG_MSM_CAMERA_FLASH */
+
 #ifdef CONFIG_RAWCHIP
 static int elite_use_ext_1v2(void)
 {
@@ -508,8 +508,7 @@ struct platform_device msm_rawchip_device = {
 		.platform_data = &msm_rawchip_board_info,
 	},
 };
-
-#endif
+#endif /* CONFIG_RAWCHIP */
 
 static uint16_t msm_cam_gpio_tbl[] = {
 	ELITE_GPIO_CAM_MCLK0, 
@@ -522,14 +521,12 @@ static uint16_t msm_cam_gpio_tbl[] = {
 	ELITE_GPIO_MCAM_SPI_DO,
 };
 
-
 static struct msm_camera_gpio_conf gpio_conf = {
 	.cam_gpiomux_conf_tbl = NULL,
 	.cam_gpiomux_conf_tbl_size = 0,
 	.cam_gpio_tbl = msm_cam_gpio_tbl,
 	.cam_gpio_tbl_size = ARRAY_SIZE(msm_cam_gpio_tbl),
 };
-
 
 static struct regulator *reg_8921_l2;
 static struct regulator *reg_8921_l8;
@@ -866,13 +863,11 @@ static struct camera_flash_cfg msm_camera_sensor_s5k3h2yx_flash_cfg = {
 	.flash_info             = &msm_camera_sensor_s5k3h2yx_flash_info,
 };
 
-
 static struct msm_camera_sensor_flash_data flash_s5k3h2yx = {
 	.flash_type	= MSM_CAMERA_FLASH_LED,
 #ifdef CONFIG_MSM_CAMERA_FLASH
 	.flash_src	= &msm_flash_src,
 #endif
-
 };
 
 static struct msm_camera_sensor_info msm_camera_sensor_s5k3h2yx_data = {
@@ -892,7 +887,7 @@ static struct msm_camera_sensor_info msm_camera_sensor_s5k3h2yx_data = {
 	.flash_cfg = &msm_camera_sensor_s5k3h2yx_flash_cfg, 
 };
 
-#endif	
+#endif /* CONFIG_S5K3H2YX */
 
 #ifdef CONFIG_IMX175_2LANE
 static int elite_imx175_vreg_on(void)
@@ -1157,7 +1152,6 @@ static struct msm_camera_sensor_flash_data flash_imx175 = {
 #ifdef CONFIG_MSM_CAMERA_FLASH
 	.flash_src	= &msm_flash_src,
 #endif
-
 };
 
 static struct msm_camera_sensor_info msm_camera_sensor_imx175_data = {
@@ -1176,7 +1170,7 @@ static struct msm_camera_sensor_info msm_camera_sensor_imx175_data = {
 	.use_rawchip = RAWCHIP_ENABLE,
 	.flash_cfg = &msm_camera_sensor_imx175_flash_cfg, 
 };
-#endif	
+#endif /* CONFIG_IMX175_2LANE */
 
 #ifdef CONFIG_S5K6A1GX
 #define ELITE_XB_GPIO_V_CAM2_D1V2_EN 93
@@ -1380,7 +1374,7 @@ static struct msm_camera_sensor_info msm_camera_sensor_s5k6a1gx_data = {
 	.camera_type = FRONT_CAMERA_2D,
 	.use_rawchip = RAWCHIP_DISABLE, 
 };
-#endif 
+#endif /* CONFIG_S5K6A1GX */
 
 static void config_cam_id(int status)
 {
@@ -1398,7 +1392,6 @@ static void config_cam_id(int status)
 		gpio_tlmm_config(cam_id_gpio_end[0], GPIO_CFG_ENABLE);
 }
 
-#ifdef CONFIG_I2C
 static struct i2c_board_info msm_camera_boardinfo[] = {
 #ifdef CONFIG_S5K3H2YX
 	{
@@ -1438,12 +1431,11 @@ struct msm_camera_board_info elite_camera_board_info_2nd = {
 	.board_info = msm_camera_boardinfo_2nd,
 	.num_i2c_board_info = ARRAY_SIZE(msm_camera_boardinfo_2nd),
 };
-
-#endif  
+#endif /* CONFIG_MSM_CAMERA */
 
 void __init elite_init_camera(void)
 {
-
+#ifdef CONFIG_MSM_CAMERA
 	pr_info("%s", __func__);
 
 	msm_gpiomux_install(elite_cam_configs,
@@ -1474,7 +1466,5 @@ void __init elite_init_camera(void)
 	platform_device_register(&msm8960_device_ispif);
 	platform_device_register(&msm8960_device_vfe);
 	platform_device_register(&msm8960_device_vpe);
+#endif /* CONFIG_MSM_CAMERA */
 }
-
-
-#endif	
