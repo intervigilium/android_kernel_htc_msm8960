@@ -312,7 +312,6 @@ void __init msm8960_allocate_fb_region(void);
 void __init elite_pm8921_gpio_mpp_init(void);
 void msm8960_mdp_writeback(struct memtype_reserve *reserve_table);
 int __init elite_init_keypad(void);
-void elite_init_gpu(void);
 
 #ifdef CONFIG_MSM_CACHE_DUMP
 extern struct msm_cache_dump_platform_data msm8960_cache_dump_pdata;
