@@ -4969,7 +4969,7 @@ module_param_cb(hdcp, &hdcp_feature_on_param_ops, &hdcp_feature_on,
 			S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(hdcp, "Enable or Disable HDCP");
 
-module_init(hdmi_msm_init);
+late_initcall(hdmi_msm_init);
 module_exit(hdmi_msm_exit);
 
 MODULE_LICENSE("GPL v2");
