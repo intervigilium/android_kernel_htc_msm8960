@@ -83,6 +83,13 @@ static bool hdcp_feature_on = true;
 DEFINE_MUTEX(hdmi_msm_state_mutex);
 EXPORT_SYMBOL(hdmi_msm_state_mutex);
 static DEFINE_MUTEX(hdcp_auth_state_mutex);
+#ifdef CONFIG_FB_MSM_HDMI_MHL_SII9234
+extern void change_driving_strength(byte reg_a3, byte reg_a6);
+extern bool g_bEnterEarlySuspend;
+#endif
+#ifdef CONFIG_INTERNAL_CHARGING_SUPPORT
+void check_mhl_5v_status(void);
+#endif
 
 static void hdmi_msm_dump_regs(const char *prefix);
 
@@ -621,6 +628,35 @@ void hdmi_msm_cec_one_touch_play(void)
 }
 #endif /* CONFIG_FB_MSM_HDMI_MSM_PANEL_CEC_SUPPORT */
 
+#ifdef CONFIG_FB_MSM_HDMI_MHL_SII9234
+void hdmi_set_switch_state(bool enable)
+{
+	if (!enable)
+		switch_set_state(&external_common_state->sdev, 0);
+	DEV_INFO("%s, %s\n", __func__, enable ? "on" : "off");
+}
+EXPORT_SYMBOL(hdmi_set_switch_state);
+#endif
+
+#ifdef CONFIG_FB_MSM_HDMI_MHL
+static void adjust_driving_strength(void)
+{
+#ifdef CONFIG_FB_MSM_HDMI_MHL_SII9234
+	int i = 0;
+	if (hdmi_msm_state->pd->driving_params) {
+		for (i = 0; i < hdmi_msm_state->pd->driving_params_count; i++) {
+			if (external_common_state->video_resolution ==
+					hdmi_msm_state->pd->driving_params[i].format) {
+				change_driving_strength(hdmi_msm_state->pd->driving_params[i].reg_a3,
+						hdmi_msm_state->pd->driving_params[i].reg_a6);
+				break;
+			}
+		}
+	}
+#endif /* CONFIG_FB_MSM_HDMI_MHL_SII9234 */
+}
+#endif /* CONFIG_FB_MSM_HDMI_MHL */
+
 uint32 hdmi_msm_get_io_base(void)
 {
 	return (uint32)MSM_HDMI_BASE;
@@ -764,6 +800,14 @@ static int hdmi_msm_audio_off(void);
 static int hdmi_msm_read_edid(void);
 static void hdmi_msm_hpd_off(void);
 
+#ifdef CONFIG_FB_MSM_HDMI_MHL_SII9234
+static void mhl_status_notifier_func(bool is_mhl, int charging_type)
+{
+	if (!is_mhl)
+		switch_set_state(&external_common_state->sdev, 0);
+}
+#endif
+
 static bool hdmi_ready(void)
 {
 	return MSM_HDMI_BASE &&
@@ -860,6 +904,13 @@ static void hdmi_msm_hdcp_reauth_work(struct work_struct *work)
 
 static void hdmi_msm_hdcp_work(struct work_struct *work)
 {
+#ifdef CONFIG_FB_MSM_HDMI_MHL_SII9234
+	if (g_bEnterEarlySuspend) {
+		DEV_DBG("%s: SII9234 in early suspend", __func__);
+		return;
+	}
+#endif
+
 	if (!hdmi_msm_state->hdcp_enable) {
 		DEV_DBG("%s: HDCP not enabled\n", __func__);
 		return;
@@ -4280,6 +4331,9 @@ static int hdmi_msm_hpd_on(void)
 					__func__, rc);
 			goto error3;
 		}
+#ifdef CONFIG_INTERNAL_CHARGING_SUPPORT
+		check_mhl_5v_status();
+#endif
 		hdmi_msm_dump_regs("HDMI-INIT: ");
 
 		hdmi_msm_set_mode(FALSE);
@@ -4401,6 +4455,12 @@ static int hdmi_msm_power_on(struct platform_device *pdev)
 	} else {
 		mutex_unlock(&external_common_state_hpd_mutex);
 	}
+
+#ifdef CONFIG_FB_MSM_HDMI_MHL
+	if (hdmi_msm_state->pd->driving_params) {
+		adjust_driving_strength();
+	}
+#endif
 
 	hdmi_msm_dump_regs("HDMI-ON: ");
 
@@ -4552,6 +4612,27 @@ static bool hdmi_msm_cable_connected(void)
 	return hdmi_msm_state->hpd_initialized &&
 			external_common_state->hpd_state;
 }
+
+#ifdef CONFIG_MACH_HTC
+void hdmi_hpd_feature(int enable)
+{
+	if (external_common_state->hpd_feature) {
+		if (enable) {
+			external_common_state->hpd_feature(1);
+			mutex_lock(&external_common_state_hpd_mutex);
+			external_common_state->hpd_feature_on = 1;
+			mutex_unlock(&external_common_state_hpd_mutex);
+		} else {
+			if (hdmi_msm_state->panel_power_on == FALSE) {
+				external_common_state->hpd_feature(0);
+			}
+			mutex_lock(&external_common_state_hpd_mutex);
+			external_common_state->hpd_feature_on = 0;
+			mutex_unlock(&external_common_state_hpd_mutex);
+		}
+	}
+}
+#endif
 
 static int __devinit hdmi_msm_probe(struct platform_device *pdev)
 {
@@ -4826,6 +4907,13 @@ static struct platform_device this_device = {
 	.dev.platform_data = &hdmi_msm_panel_data,
 };
 
+#ifdef CONFIG_FB_MSM_HDMI_MHL_SII9234
+static struct t_mhl_status_notifier mhl_status_notifier = {
+	.name = "mhl_detect",
+	.func = mhl_status_notifier_func,
+};
+#endif
+
 static int __init hdmi_msm_init(void)
 {
 	int rc;
@@ -4901,6 +4989,10 @@ static int __init hdmi_msm_init(void)
 		  hdmi_msm_cec_latch_work);
 	init_completion(&hdmi_msm_state->cec_frame_wr_done);
 	init_completion(&hdmi_msm_state->cec_line_latch_wait);
+#endif
+
+#if (defined(CONFIG_CABLE_DETECT_ACCESSORY) && defined(CONFIG_FB_MSM_HDMI_MHL_SII9234))
+	mhl_detect_register_notifier(&mhl_status_notifier);
 #endif
 
 	rc = platform_device_register(&this_device);
