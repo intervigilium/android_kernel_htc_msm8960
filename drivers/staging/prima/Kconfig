@@ -27,4 +27,8 @@ config PRIMA_WLAN_11AC_HIGH_TP
 	bool "Enable the Prima WLAN 802.11ac High Throughput option (depends upon kernel support)"
 	default n
 
+config HTC_WIFI_NVS
+	bool "Read WiFi data from HTC NVS"
+	default n
+
 endif # PRIMA_WLAN
