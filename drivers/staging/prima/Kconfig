@@ -15,8 +15,12 @@ config PRIMA_WLAN_BTAMP
 	bool "Enable the Prima WLAN BT-AMP feature"
 	default n
 
-config HTC_WIFI_NVS
-	bool "Read WiFi data from HTC NVS"
+config PRIMA_WLAN_LFR
+	bool "Enable the Prima WLAN Legacy Fast Roaming feature"
+	default n
+
+config PRIMA_WLAN_OKC
+	bool "Enable the Prima WLAN Opportunistic Key Caching feature"
 	default n
 
 endif # PRIMA_WLAN

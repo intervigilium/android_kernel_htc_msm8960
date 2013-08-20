@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -53,13 +53,11 @@ static void wpalTimerCback( void * userData )
    {
       pTimer->callback(pTimer->pUserData);
    }
-#ifdef WLAN_DEBUG
    else
    {
       WPAL_TRACE( eWLAN_MODULE_PAL, eWLAN_PAL_TRACE_LEVEL_WARN, " %s pTimer(%d) callback after deleted \n",
          __FUNCTION__, (wpt_uint32)pTimer );
    }
-#endif
 }/*wpalTimerCback*/
 
 /*---------------------------------------------------------------------------
@@ -76,10 +74,8 @@ wpt_status wpalTimerInit(wpt_timer * pTimer, wpal_timer_callback callback, void 
    /* Sanity Checks */
    if( pTimer == NULL || callback == NULL )
    {
-#ifdef WLAN_DEBUG
       WPAL_TRACE( eWLAN_MODULE_PAL, eWLAN_PAL_TRACE_LEVEL_ERROR, " %s Wrong param pTimer(%d) callback(%d)\n",
          __FUNCTION__, (wpt_uint32)pTimer, (wpt_uint32)callback );
-#endif
       return eWLAN_PAL_STATUS_E_INVAL;
    }
 
@@ -109,10 +105,8 @@ wpt_status wpalTimerDelete(wpt_timer *pTimer)
    /* Sanity Checks */
    if( pTimer == NULL )
    {
-#ifdef WLAN_DEBUG
       WPAL_TRACE( eWLAN_MODULE_PAL, eWLAN_PAL_TRACE_LEVEL_ERROR, " %s Wrong param pTimer(%d)\n",
          __FUNCTION__, (wpt_uint32)pTimer );
-#endif
       return eWLAN_PAL_STATUS_E_INVAL;
    }
 
@@ -142,10 +136,8 @@ wpt_status wpalTimerStart(wpt_timer * pTimer, wpt_uint32 timeout)
    /* Sanity Checks */
    if( pTimer == NULL )
    {
-#ifdef WLAN_DEBUG
       WPAL_TRACE( eWLAN_MODULE_PAL, eWLAN_PAL_TRACE_LEVEL_ERROR, " %s Wrong param pTimer(%d)\n",
          __FUNCTION__, (wpt_uint32)pTimer );
-#endif
       return eWLAN_PAL_STATUS_E_INVAL;
    }
    return ( WPAL_VOS_TO_WPAL_STATUS( vos_timer_start( &pTimer->timer.timerObj,
@@ -167,10 +159,8 @@ wpt_status wpalTimerStop(wpt_timer * pTimer)
    /* Sanity Checks */
    if( pTimer == NULL )
    {
-#ifdef WLAN_DEBUG
       WPAL_TRACE( eWLAN_MODULE_PAL, eWLAN_PAL_TRACE_LEVEL_ERROR, " %s Wrong param pTimer(%d)\n",
          __FUNCTION__, (wpt_uint32)pTimer );
-#endif
       return eWLAN_PAL_STATUS_E_INVAL;
    }
    return (WPAL_VOS_TO_WPAL_STATUS( vos_timer_stop( &pTimer->timer.timerObj )));
