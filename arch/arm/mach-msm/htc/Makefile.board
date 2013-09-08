@@ -13,3 +13,6 @@ obj-$(CONFIG_MACH_JET) += jet/
 
 # VILLE
 obj-$(CONFIG_MACH_VILLE) += ville/
+
+# M4
+obj-$(CONFIG_MACH_M4_UL) += m4/
