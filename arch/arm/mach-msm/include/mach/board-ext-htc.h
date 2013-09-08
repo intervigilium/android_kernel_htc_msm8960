@@ -106,7 +106,6 @@ typedef struct {
 } mhl_driving_params;
 #endif
 
-#ifdef CONFIG_MSM_CAMERA
 enum msm_camera_csi_data_format {
 	CSI_8BIT,
 	CSI_10BIT,
@@ -201,6 +200,5 @@ enum cam_vcm_onoff_type {
 	STATUS_OFF,
 	STATUS_ON,
 };
-#endif /* CONFIG_MSM_CAMERA */
 
 #endif /* __ASM_ARCH_MSM_BOARD_EXT_HTC_H */
