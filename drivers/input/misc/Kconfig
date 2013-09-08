@@ -676,6 +676,12 @@ config BMP18X_I2C
 
 endif
 
+config SENSORS_AKM8963
+	tristate "AKM8963 compass driver"
+	depends on I2C
+	help
+	  AKM8963 compass driver for HTC.
+
 config SENSORS_AKM8975
 	tristate "AKM8975 compass driver"
 	depends on I2C
