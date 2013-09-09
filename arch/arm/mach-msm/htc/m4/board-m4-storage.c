@@ -202,7 +202,6 @@ static unsigned int sdc3_sup_clk_rates[] = {
 #endif
 
 #ifdef CONFIG_MMC_MSM_SDC1_SUPPORT
-static unsigned int m4_emmcslot_type = MMC_TYPE_MMC;
 static struct mmc_platform_data msm8930_sdc1_data = {
 	.ocr_mask       = MMC_VDD_27_28 | MMC_VDD_28_29,
 #ifdef CONFIG_MMC_MSM_SDC1_8_BIT_SUPPORT
@@ -212,32 +211,26 @@ static struct mmc_platform_data msm8930_sdc1_data = {
 #endif
 	.sup_clk_table	= sdc1_sup_clk_rates,
 	.sup_clk_cnt	= ARRAY_SIZE(sdc1_sup_clk_rates),
-	.slot_type      = &m4_emmcslot_type,
 	.pin_data   = &mmc_slot_pin_data[SDCC1],
 	.vreg_data  = &mmc_slot_vreg_data[SDCC1],
 	.nonremovable	= 1,
-	.hc_erase_group_def	=1,
 	.uhs_caps	= MMC_CAP_1_8V_DDR | MMC_CAP_UHS_DDR50,
 	.mpm_sdiowakeup_int = MSM_MPM_PIN_SDC1_DAT1,
 	.msm_bus_voting_data = &sps_to_ddr_bus_voting_data,
-	.bkops_support = 1,
 };
 #endif
 
 #ifdef CONFIG_MMC_MSM_SDC3_SUPPORT
-static unsigned int msm8930_sdslot_type = MMC_TYPE_SD;
 static struct mmc_platform_data msm8930_sdc3_data = {
 	.ocr_mask       = MMC_VDD_27_28 | MMC_VDD_28_29,
 	.mmc_bus_width  = MMC_CAP_4_BIT_DATA,
 	.sup_clk_table	= sdc3_sup_clk_rates,
 	.sup_clk_cnt	= ARRAY_SIZE(sdc3_sup_clk_rates),
-	.slot_type      = &msm8930_sdslot_type,
 #ifdef CONFIG_MMC_MSM_SDC3_WP_SUPPORT
 #ifndef MSM8930_PHASE_2
 	.wpswitch_gpio	= PM8921_GPIO_PM_TO_SYS(16),
 #else
 	.wpswitch_gpio	= 66,
-	.wpswitch_polarity = 1,
 #endif
 #endif
 	.vreg_data	= &mmc_slot_vreg_data[SDCC3],
@@ -279,7 +272,6 @@ void __init msm8930_init_mmc(void)
 
 	if (!machine_is_msm8930_cdp()) {
 		msm8930_sdc3_data.wpswitch_gpio = 0;
-		msm8930_sdc3_data.wpswitch_polarity = 0;
 	}
 	msm_add_sdcc(3, &msm8930_sdc3_data);
 #endif

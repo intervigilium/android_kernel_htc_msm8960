@@ -117,7 +117,6 @@ static unsigned int m4_wifi_status(struct device *dev)
 	return m4_wifi_cd;
 }
 
-static unsigned int m4_wifislot_type = MMC_TYPE_SDIO_WIFI;
 static unsigned int wifi_sup_clk_rates[] = {
 	400000, 24000000, 48000000,
 };
@@ -129,7 +128,6 @@ static struct mmc_platform_data m4_wifi_data = {
 	.mmc_bus_width  = MMC_CAP_4_BIT_DATA,
 	.sup_clk_table	= wifi_sup_clk_rates,
 	.sup_clk_cnt	= ARRAY_SIZE(wifi_sup_clk_rates),
-	.slot_type = &m4_wifislot_type,
 	.uhs_caps	= (MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25 |
 			MMC_CAP_UHS_SDR50),
 	.msm_bus_voting_data = &sps_to_ddr_bus_voting_data,
