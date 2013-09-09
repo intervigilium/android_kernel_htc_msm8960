@@ -168,6 +168,7 @@ static struct pm8xxx_adc_properties pm8xxx_adc_data = {
 	.bipolar                = 0,
 };
 
+#if 0
 static const struct pm8xxx_adc_map_pt m4_adcmap_btm_threshold[] = {
 	{-200,	1671},
 	{-190,	1663},
@@ -275,13 +276,13 @@ static struct pm8xxx_adc_map_table pm8xxx_adcmap_btm_table = {
 	.table = m4_adcmap_btm_threshold,
 	.size = ARRAY_SIZE(m4_adcmap_btm_threshold),
 };
+#endif
 
 static struct pm8xxx_adc_platform_data pm8xxx_adc_pdata = {
 	.adc_channel            = pm8xxx_adc_channels_data,
 	.adc_num_board_channel  = ARRAY_SIZE(pm8xxx_adc_channels_data),
 	.adc_prop               = &pm8xxx_adc_data,
 	.adc_mpp_base		= PM8038_MPP_PM_TO_SYS(1),
-	.adc_map_btm_table	= &pm8xxx_adcmap_btm_table,
 	.pm8xxx_adc_device_register	= pm8xxx_adc_device_driver_register,
 };
 
@@ -339,9 +340,6 @@ static struct pm8921_charger_platform_data pm8921_chg_pdata __devinitdata = {
 	.warm_bat_voltage	= 4000,
 	.mbat_in_gpio		= 94,
 	.is_embeded_batt	= 1,
-	.eoc_ibat_thre_ma      = 50,
-	.cable_in_irq           = MSM_GPIO_TO_INT(MSM_CABLE_INz),
-	.cable_in_gpio          = MSM_CABLE_INz,
 	.thermal_mitigation	= pm8921_therm_mitigation,
 	.thermal_levels		= ARRAY_SIZE(pm8921_therm_mitigation),
 	.cold_thr = PM_SMBC_BATT_TEMP_COLD_THR__HIGH,
@@ -458,7 +456,6 @@ static struct pm8921_bms_platform_data pm8921_bms_pdata __devinitdata = {
 	.v_failure		= 3000,
 	.max_voltage_uv		= MAX_VOLTAGE_MV * 1000,
 	.rconn_mohm		= 0,
-	.store_batt_data_soc_thre	= 95,
 };
 
 static struct pm8xxx_vibrator_platform_data pm8xxx_vib_pdata = {
