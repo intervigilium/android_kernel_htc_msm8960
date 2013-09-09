@@ -406,6 +406,30 @@ int __init tag_gy_parsing(const struct tag *tags)
 }
 __tagtable(ATAG_GY_TYPE, tag_gy_parsing);
 
+/* SMLOG */
+#define ATAG_SMLOG 0x54410026
+int __init parse_tag_smlog(const struct tag *tags)
+{
+	int smlog_flag = 0, find = 0;
+	struct tag *t = (struct tag *)tags;
+
+	for (; t->hdr.size; t = tag_next(t)) {
+		if (t->hdr.tag == ATAG_SMLOG) {
+			printk(KERN_DEBUG "[K] find the smlog tag\n");
+			find = 1;
+			break;
+		}
+	}
+
+	if (find) {
+		smlog_flag = t->u.revision.rev;
+	}
+
+	printk(KERN_DEBUG "[K] parse_tag_smlog: %d\n", smlog_flag);
+	return smlog_flag;
+}
+__tagtable(ATAG_SMLOG, parse_tag_smlog);
+
 static unsigned long radio_flag;
 int __init radio_flag_init(char *s)
 {
