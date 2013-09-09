@@ -89,50 +89,12 @@ static struct resource m4_wifi_resources[] = {
 	},
 };
 
-#ifdef CONFIG_MSM_BUS_SCALING
-static struct msm_bus_vectors wlan_init_vectors[] = {
-	{
-		.src = MSM_BUS_MASTER_SPS,
-		.dst = MSM_BUS_SLAVE_EBI_CH0,
-		.ab = 0,
-		.ib = 0,
-	},
-};
-
-static struct msm_bus_vectors wlan_max_vectors[] = {
-	{
-		.src = MSM_BUS_MASTER_SPS,
-		.dst = MSM_BUS_SLAVE_EBI_CH0,
-		.ab = 60000000,
-		.ib = 960000000,
-	},
-};
-
-static struct msm_bus_paths wlan_bus_scale_usecases[] = {
-	{
-		ARRAY_SIZE(wlan_init_vectors),
-		wlan_init_vectors,
-	},
-	{
-		ARRAY_SIZE(wlan_max_vectors),
-		wlan_max_vectors,
-	},
-};
-
-static struct msm_bus_scale_pdata wlan_bus_scale_pdata = {
-	wlan_bus_scale_usecases,
-	ARRAY_SIZE(wlan_bus_scale_usecases),
-	.name = "wlan",
-};
-#endif
-
 static struct wifi_platform_data m4_wifi_control = {
 	.set_power      = m4_wifi_power,
 	.set_reset      = m4_wifi_reset,
 	.set_carddetect = m4_wifi_set_carddetect,
 	.mem_prealloc   = m4_wifi_mem_prealloc,
 	.get_mac_addr	= m4_wifi_get_mac_addr,
-	.bus_scale_table    = &wlan_bus_scale_pdata,
 };
 
 static struct platform_device m4_wifi_device = {
