@@ -3201,9 +3201,11 @@ static struct platform_device *common_devices[] __initdata = {
 	&msm_device_uart_dm6,
 	&m4_rfkill,
 #endif
+#if 0
 	&apq_cpudai_pri_i2s_rx,
 	&apq_cpudai_pri_i2s_tx,
 	&msm_cpudai_mi2s,
+#endif
 };
 
 static struct platform_device *cdp_devices[] __initdata = {
