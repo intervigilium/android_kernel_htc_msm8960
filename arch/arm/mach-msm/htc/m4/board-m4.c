@@ -2978,8 +2978,6 @@ static struct platform_device msm_device_saw_core1 = {
 static struct tsens_platform_data msm_tsens_pdata  = {
 	.tsens_factor		= 1000,
 	.hw_type		= APQ_8064,
-	.patherm0		= ADC_MPP_1_AMUX3,
-	.patherm1		= -1,
 	.tsens_num_sensor	= 10,
 	.slope = {1132, 1135, 1137, 1135, 1157,
 			1142, 1124, 1153, 1175, 1166},
@@ -2993,9 +2991,9 @@ static struct platform_device msm_tsens_device = {
 static struct msm_thermal_data msm_thermal_pdata = {
 	.sensor_id = 9,
 	.poll_ms = 250,
-	.limit_temp = 60,
-	.temp_hysteresis = 10,
-	.limit_freq = 918000,
+	.limit_temp_degC = 60,
+	.temp_hysteresis_degC = 10,
+	.freq_step = 2,
 };
 
 #ifdef CONFIG_MSM_FAKE_BATTERY
