@@ -70,20 +70,11 @@ static void m4_setup_input_gpio(void)
 }
 
 uint32_t hw_clr_gpio_table[] = {
-		GPIO_CFG(MSM_HW_RST_CLRz, 0, GPIO_CFG_INPUT,
-			GPIO_CFG_PULL_UP, GPIO_CFG_2MA),
-		GPIO_CFG(MSM_HW_RST_CLRz, 0, GPIO_CFG_OUTPUT,
-			GPIO_CFG_PULL_UP, GPIO_CFG_2MA),
-	};
-static void m4_clear_hw_reset(void)
-{
-	printk(KERN_INFO "[KEY] %s ++++++\n", __func__);
-	gpio_tlmm_config(hw_clr_gpio_table[1], GPIO_CFG_ENABLE);
-	gpio_set_value(MSM_HW_RST_CLRz, 0);
-	msleep(100);
-	gpio_tlmm_config(hw_clr_gpio_table[0], GPIO_CFG_ENABLE);
-	printk(KERN_INFO "[KEY] %s ------\n", __func__);
-}
+	GPIO_CFG(MSM_HW_RST_CLRz, 0, GPIO_CFG_INPUT,
+		GPIO_CFG_PULL_UP, GPIO_CFG_2MA),
+	GPIO_CFG(MSM_HW_RST_CLRz, 0, GPIO_CFG_OUTPUT,
+		GPIO_CFG_PULL_UP, GPIO_CFG_2MA),
+};
 
 static struct gpio_event_input_info m4_keypad_input_info = {
 	.info.func             = gpio_event_input_func,
@@ -96,8 +87,6 @@ static struct gpio_event_input_info m4_keypad_input_info = {
 # endif
 	.keymap                = m4_keypad_input_map,
 	.keymap_size           = ARRAY_SIZE(m4_keypad_input_map),
-	.setup_input_gpio      = m4_setup_input_gpio,
-	.clear_hw_reset	= m4_clear_hw_reset,
 };
 
 static struct gpio_event_info *m4_keypad_info[] = {
@@ -138,6 +127,8 @@ struct platform_device m4_reset_keys_device = {
 int __init m4_init_keypad(void)
 {
 	printk(KERN_DEBUG "[KEY]%s\n", __func__);
+
+	m4_setup_input_gpio();
 
 	if (platform_device_register(&m4_reset_keys_device))
 		printk(KERN_WARNING "%s: register reset key fail\n", __func__);
