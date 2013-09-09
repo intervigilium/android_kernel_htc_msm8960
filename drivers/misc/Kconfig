@@ -715,6 +715,18 @@ config SENSORS_NFC_PN544
 	help
 	  PN544 NFC driver.
 
+config AMP_RT5501
+	tristate "RT5501 Amp driver"
+	depends on I2C
+	help
+	  RT5501 amp driver
+
+config AMP_RT5501_DELAY
+	boolean "RT5501 Amp delay workaround"
+	depends on I2C
+	help
+	  RT5501 amp delay to workaround pop noise when enabling headset
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
