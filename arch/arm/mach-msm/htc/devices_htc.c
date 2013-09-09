@@ -518,7 +518,11 @@ unsigned int get_tamper_sf(void)
 }
 EXPORT_SYMBOL(get_tamper_sf);
 
+#ifdef CONFIG_ARCH_MSM8930
+#define MSM_RAM_CONSOLE_BASE   0x8F900000
+#else
 #define MSM_RAM_CONSOLE_BASE   0x88900000
+#endif
 #define MSM_RAM_CONSOLE_SIZE   (SZ_1M - SZ_128K) /* 128K for debug info */
 
 static struct resource ram_console_resources[] = {
