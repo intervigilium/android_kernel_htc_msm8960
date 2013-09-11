@@ -432,6 +432,8 @@ void msm_restart(char mode, const char *cmd)
 			) {
 		if (mode == RESTART_MODE_MODEM_USER_INVOKED)
 			set_restart_action(RESTART_REASON_REBOOT, NULL);
+		else if (mode == RESTART_MODE_ERASE_EFS)
+			set_restart_action(RESTART_REASON_ERASE_EFS, NULL);
 		else {
 			set_restart_action(RESTART_REASON_RAMDUMP, cmd);
 		}
