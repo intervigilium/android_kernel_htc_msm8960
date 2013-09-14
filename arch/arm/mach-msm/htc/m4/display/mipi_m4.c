@@ -1342,6 +1342,12 @@ static void m4_set_backlight(struct msm_fb_data_type *mfd)
 
 static int __devinit mipi_m4_lcd_probe(struct platform_device *pdev)
 {
+        display_off_cmds = sharp_display_off_cmds;
+        display_off_cmds_count = ARRAY_SIZE(sharp_display_off_cmds);
+
+        backlight_cmds = sharp_hx_cmd_backlight_cmds;
+        backlight_cmds_count = ARRAY_SIZE(sharp_hx_cmd_backlight_cmds);
+
 	if (panel_type == PANEL_ID_KIWI_SHARP_HX) {
 		init_on_cmds = sharp_hx_cmd_on_cmds;
 		init_on_cmds_count = ARRAY_SIZE(sharp_hx_cmd_on_cmds);
@@ -1352,10 +1358,6 @@ static int __devinit mipi_m4_lcd_probe(struct platform_device *pdev)
 
 	display_on_cmds = sharp_display_on_cmds;
 	display_on_cmds_count = ARRAY_SIZE(sharp_display_on_cmds);
-	display_off_cmds = sharp_display_off_cmds;
-	display_off_cmds_count = ARRAY_SIZE(sharp_display_off_cmds);
-	backlight_cmds = sharp_hx_cmd_backlight_cmds;
-	backlight_cmds_count = ARRAY_SIZE(sharp_hx_cmd_backlight_cmds);
 
 	if (pdev->id == 0) {
 		mipi_m4_pdata = pdev->dev.platform_data;
