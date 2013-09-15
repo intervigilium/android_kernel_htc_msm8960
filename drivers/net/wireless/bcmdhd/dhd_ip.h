@@ -1,7 +1,9 @@
 /*
- * BT-AMP (BlueTooth Alternate Mac and Phy) 802.11 PAL (Protocol Adaptation Layer)
+ * Header file describing the common ip parser function.
  *
- * Copyright (C) 1999-2012, Broadcom Corporation
+ * Provides type definitions and function prototypes used to parse ip packet.
+ *
+ * Copyright (C) 1999-2013, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -21,25 +23,20 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: 802.11_bta.h 294267 2011-11-04 23:41:52Z $
-*/
+ * $Id$
+ */
 
-#ifndef _802_11_BTA_H_
-#define _802_11_BTA_H_
+#ifndef _dhd_ip_h_
+#define _dhd_ip_h_
 
-#define BT_SIG_SNAP_MPROT		"\xAA\xAA\x03\x00\x19\x58"
+typedef enum pkt_frag
+{
+	DHD_PKT_FRAG_NONE = 0,
+	DHD_PKT_FRAG_FIRST,
+	DHD_PKT_FRAG_CONT,
+	DHD_PKT_FRAG_LAST
+} pkt_frag_t;
 
-/* BT-AMP 802.11 PAL Protocols */
-#define BTA_PROT_L2CAP				1
-#define	BTA_PROT_ACTIVITY_REPORT		2
-#define BTA_PROT_SECURITY			3
-#define BTA_PROT_LINK_SUPERVISION_REQUEST	4
-#define BTA_PROT_LINK_SUPERVISION_REPLY		5
+extern pkt_frag_t pkt_frag_info(osl_t *osh, void *p);
 
-/* BT-AMP 802.11 PAL AMP_ASSOC Type IDs */
-#define BTA_TYPE_ID_MAC_ADDRESS			1
-#define BTA_TYPE_ID_PREFERRED_CHANNELS		2
-#define BTA_TYPE_ID_CONNECTED_CHANNELS		3
-#define BTA_TYPE_ID_CAPABILITIES		4
-#define BTA_TYPE_ID_VERSION			5
-#endif /* _802_11_bta_h_ */
+#endif /* _dhd_ip_h_ */
